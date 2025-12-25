@@ -191,6 +191,7 @@ docker-compose logs -f
 | 服务 | 模型类型 | 免费额度 | 配置难度 | 推荐指数 |
 |------|----------|----------|----------|----------|
 | **OpenRouter** | 文本、视觉、多模态 | ✅ 有免费模型 | ⭐ 简单 | ⭐⭐⭐⭐⭐ |
+| **iFlow** | 文本 | ✅ 全部免费 | ⭐ 简单 | ⭐⭐⭐⭐⭐ |
 | **Ollama** | 文本、视觉 | ✅ 完全免费 | ⭐⭐ 需本地安装 | ⭐⭐⭐⭐ |
 | **ModelScope** | 文本 | ✅ 有免费额度 | ⭐ 简单 | ⭐⭐⭐ |
 | **自定义服务** | 任意 | 视服务而定 | ⭐ 简单 | ⭐⭐⭐ |
@@ -211,6 +212,24 @@ docker-compose logs -f
 - 多模态: Gemini Pro, Claude 3 等
 
 注册地址: https://openrouter.ai/
+
+### iFlow
+
+中文免费模型服务，所有模型完全免费
+
+```yaml
+- type: iflow
+  enabled: true
+  api_key: ${IFLOW_API_KEY}
+```
+
+支持的模型包括：
+- Qwen3-Max
+- GLM-4.6
+- DeepSeek-V3
+- 等多个免费中文模型
+
+注册地址: https://iflow.cn/
 
 ### Ollama
 
@@ -272,6 +291,42 @@ LiteLLM 做的事情：
 
 **如果你会手写配置**: 可以直接用 LiteLLM，不需要 FreeRouter。
 **如果配置太多太繁琐**: FreeRouter 帮你自动生成，省时省力。
+
+## 关于免费 Provider
+
+FreeRouter 目前支持两个提供免费模型的 Provider：
+
+### OpenRouter
+- **官网**: https://openrouter.ai/
+- **免费模型**: 提供 30+ 个免费 AI 模型（包括 GPT-3.5、Gemini、Llama 等）
+- **使用说明**: 注册账号后获取 API Key，无需付费即可使用免费模型
+- **FreeRouter 的作用**: 自动获取所有可用模型列表，筛选出免费模型，生成 LiteLLM 配置
+
+### iFlow
+- **官网**: https://iflow.cn/
+- **免费模型**: 提供多个免费中文 AI 模型（如 Qwen、GLM、DeepSeek 等）
+- **使用说明**: 注册账号后获取 API Key，所有模型均为免费
+- **FreeRouter 的作用**: 自动获取模型列表，生成 LiteLLM 配置
+
+### 使用原则
+
+FreeRouter 的目的是**简化配置管理**，而不是滥用免费服务。我们建议：
+
+1. **遵守服务条款**: 请仔细阅读并遵守各 Provider 的使用条款和速率限制
+2. **合理使用**: 免费服务是为了让更多人体验 AI，请不要用于商业用途或大规模请求
+3. **尊重 Provider**: 这些服务提供商慷慨地提供免费额度，请珍惜并合理使用
+4. **个人学习**: FreeRouter 主要面向个人学习和开发测试，不建议用于生产环境
+5. **支持开发者**: 如果你的项目开始盈利或需要稳定服务，请考虑升级到付费计划
+
+### 关于项目定位
+
+FreeRouter 是一个**配置管理工具**，帮助用户更方便地使用 LiteLLM。我们：
+- ✅ 不修改 Provider API 行为
+- ✅ 不绕过任何访问限制
+- ✅ 不鼓励滥用免费服务
+- ✅ 只是让配置文件生成更简单
+
+如果你是 OpenRouter 或 iFlow 的运营方，对本项目有任何疑虑或建议，欢迎通过 Issue 与我们联系。
 
 ## 更新服务
 
