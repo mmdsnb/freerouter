@@ -33,3 +33,9 @@ docker-compose.override.yml
 *.tmp
 .cache/
 .env
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
