@@ -324,39 +324,6 @@ curl http://localhost:4000/health
 freerouter start
 ```
 
-## 常见问题
-
-### Q: FreeRouter 和 LiteLLM 什么关系？
-
-A: FreeRouter 是 LiteLLM 的配置管理工具。它帮你自动生成 LiteLLM 配置文件，然后启动 LiteLLM 服务。所有 API 功能由 LiteLLM 提供。
-
-### Q: 我需要了解 LiteLLM 吗？
-
-A: **强烈建议**先看 [LiteLLM 文档](https://docs.litellm.ai/)，了解：
-- LiteLLM 的配置格式
-- 支持的 API 功能
-- 路由和负载均衡策略
-
-FreeRouter 只是帮你生成配置，具体怎么用还是要看 LiteLLM。
-
-### Q: 我已经会写 LiteLLM 配置了，还需要 FreeRouter 吗？
-
-A: 不一定。如果你的配置很简单，或者喜欢手动控制，直接用 LiteLLM 就好。FreeRouter 适合管理很多 Provider 和模型的场景。
-
-### Q: 支持哪些模型？
-
-A: 取决于：
-1. 你配置的 Provider（OpenRouter、Ollama 等）
-2. LiteLLM 支持的模型格式
-
-查看 [LiteLLM 支持的 Provider](https://docs.litellm.ai/docs/providers)
-
-### Q: 可以商用吗？
-
-A: FreeRouter 本身是 MIT 协议，可以商用。但：
-- 确保你使用的 AI 服务允许商用
-- LiteLLM 的许可证请查看其官方说明
-
 ## 文档
 
 - **README.md** (本文档) - 快速开始和使用指南
