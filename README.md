@@ -282,6 +282,28 @@ freerouter fetch  # 重新获取模型列表
 freerouter start  # 重启服务（Ctrl+C 停止旧服务）
 ```
 
+## 测试
+
+在提交代码前运行测试：
+
+```bash
+# 运行所有测试（包括 E2E）
+python scripts/test.py
+
+# 快速测试（跳过 E2E）
+python scripts/test.py --quick
+
+# 只运行 E2E 测试
+python scripts/test.py --e2e
+```
+
+测试包含：
+- **单元测试**: 测试单个组件
+- **集成测试**: 测试配置生成
+- **E2E 测试**: 测试完整服务流程（fetch → start → API）
+
+更多测试说明见 [tests/README.md](tests/README.md)
+
 ## 故障排查
 
 ### 服务启动失败
