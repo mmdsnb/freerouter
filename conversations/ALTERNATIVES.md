@@ -33,7 +33,7 @@ yay -S transcrypt
 ### Setup
 
 ```bash
-cd freerouter
+cd freerouter  # Your cloned repo directory
 
 # Initialize transcrypt with a password
 transcrypt -c aes-256-cbc -p 'YOUR_PASSWORD_HERE'
