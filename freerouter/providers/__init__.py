@@ -7,6 +7,7 @@ from .openrouter import OpenRouterProvider
 from .ollama import OllamaProvider
 from .modelscope import ModelScopeProvider
 from .iflow import IFlowProvider
+from .oai import OAIProvider
 from .static import StaticProvider
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     'OllamaProvider',
     'ModelScopeProvider',
     'IFlowProvider',
+    'OAIProvider',
     'StaticProvider',
 ]

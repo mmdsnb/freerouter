@@ -23,7 +23,14 @@
       "Bash(python scripts/test.py:*)",
       "Bash(python test_iflow.py:*)",
       "Bash(gh repo edit:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(python -c:*)",
+      "Bash(python scripts/fetch.py:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(freerouter --version:*)",
+      "Bash(freerouter list:*)",
+      "Bash(timeout 5 freerouter start:*)",
+      "Bash(freerouter)"
     ]
   }
 }

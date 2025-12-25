@@ -27,9 +27,10 @@ FreeRouter 是 [LiteLLM](https://github.com/BerriAI/litellm) 的**配置管理�
 |----------|------|------|
 | **OpenRouter** | 文本、视觉、多模态 | ✅ 部分免费 |
 | **iFlow** | 文本 | ✅ 全部免费 |
-| **Ollama** | 文本、视觉 | ✅ 本地免费 |
 | **ModelScope** | 文本 | ✅ 有免费额度 |
-| **自定义** | 任意 | 视服务而定 |
+| **OAI** | 任意 (OpenAI 兼容) | 视服务而定 |
+| **Ollama** | 文本、视觉 | ✅ 本地免费 |
+| **Static** | 任意 | 视服务而定 |
 
 **免费 Provider**：
 - **OpenRouter** (https://openrouter.ai/) - 30+ 免费模型（GPT-3.5、Gemini、Llama 等）
@@ -87,7 +88,14 @@ providers:
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
 
-  # 自定义服务
+  # OAI - 通用 OpenAI 兼容 API（自动获取模型）
+  - type: oai
+    name: myservice
+    enabled: false
+    api_base: https://api.example.com/v1
+    api_key: ${MYSERVICE_API_KEY}
+
+  # Static - 自定义服务（单个模型，手动配置）
   - type: static
     enabled: false
     model_name: gpt-3.5-turbo

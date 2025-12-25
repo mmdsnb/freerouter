@@ -27,9 +27,10 @@ FreeRouter is a **configuration management tool** for [LiteLLM](https://github.c
 |----------|------|------|
 | **OpenRouter** | Text, Vision, Multimodal | ✅ Partially Free |
 | **iFlow** | Text | ✅ Fully Free |
-| **Ollama** | Text, Vision | ✅ Local Free |
 | **ModelScope** | Text | ✅ Free Quota |
-| **Custom** | Any | Depends |
+| **OAI** | Any (OpenAI-compatible) | Depends |
+| **Ollama** | Text, Vision | ✅ Local Free |
+| **Static** | Any | Depends |
 
 **Free Providers**:
 - **OpenRouter** (https://openrouter.ai/) - 30+ free models (GPT-3.5, Gemini, Llama, etc.)
@@ -87,7 +88,14 @@ providers:
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
 
-  # Custom service
+  # OAI - Generic OpenAI-compatible API (auto-fetch models)
+  - type: oai
+    name: myservice
+    enabled: false
+    api_base: https://api.example.com/v1
+    api_key: ${MYSERVICE_API_KEY}
+
+  # Static - Custom service (single model, manual config)
   - type: static
     enabled: false
     model_name: gpt-3.5-turbo

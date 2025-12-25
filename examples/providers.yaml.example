@@ -22,7 +22,14 @@ providers:
     enabled: false
     api_key: ${IFLOW_API_KEY}
 
-  # Static - For any custom OpenAI-compatible endpoint
+  # OAI - Generic OpenAI-compatible APIs (auto-fetch models)
+  - type: oai
+    name: myservice  # Your service name
+    enabled: false
+    api_base: https://api.example.com/v1
+    api_key: ${MYSERVICE_API_KEY}
+
+  # Static - For any custom OpenAI-compatible endpoint (single model)
   - type: static
     enabled: false
     model_name: gpt-3.5-turbo
