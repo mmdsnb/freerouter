@@ -34,7 +34,16 @@ headers = {"Authorization": f"Bearer {TEST_MASTER_KEY}"}
 2. **集成测试** (`test_integration.py`)
    - 测试配置生成流程
    - 测试 API Key 一致性
-   - 不启动真实的 LiteLLM 服务（避免端口冲突）
+   - 快速测试（不启动服务）
+
+3. **E2E 端到端测试** (`test_e2e.py`) ⭐
+   - **完整的服务端测试流程**
+   - 测试从 fetch 到 start 的完整流程：
+     1. 生成配置文件
+     2. 启动真实的 LiteLLM 服务
+     3. 调用 API 验证功能
+   - 使用 static providers（不依赖外部 API）
+   - 自动清理服务进程
 
 ## 运行测试
 
@@ -44,10 +53,19 @@ headers = {"Authorization": f"Bearer {TEST_MASTER_KEY}"}
 pytest
 ```
 
-### 运行指定测试文件
+**提示**: E2E 测试会启动真实服务，需要 ~10 秒
+
+### 运行指定测试类型
 
 ```bash
+# 只运行单元测试（快速）
+pytest tests/test_providers.py tests/test_fetcher.py -v
+
+# 只运行集成测试（快速）
 pytest tests/test_integration.py -v
+
+# 只运行 E2E 测试（完整服务端测试）
+pytest tests/test_e2e.py -v
 ```
 
 ### 查看覆盖率
@@ -55,6 +73,15 @@ pytest tests/test_integration.py -v
 ```bash
 pytest --cov=freerouter --cov-report=term-missing
 ```
+
+### E2E 测试说明
+
+E2E 测试是**真正测试服务端的测试**：
+- ✅ 测试完整流程：fetch → config → start → API
+- ✅ 启动真实 LiteLLM 服务（自动清理）
+- ✅ 验证 API 端点功能
+- ✅ 测试认证机制
+- ✅ 适合 CI/CD（使用 static providers，无外部依赖）
 
 ## CI/CD 注意事项
 
