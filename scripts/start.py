@@ -32,6 +32,11 @@ def start_litellm():
     port = os.getenv("LITELLM_PORT", "4000")
     host = os.getenv("LITELLM_HOST", "0.0.0.0")
 
+    # Clear CONFIG_FILE_PATH to ensure our config is used
+    if "CONFIG_FILE_PATH" in os.environ:
+        logger.info(f"Removing CONFIG_FILE_PATH environment variable: {os.environ['CONFIG_FILE_PATH']}")
+        del os.environ["CONFIG_FILE_PATH"]
+
     logger.info("=" * 60)
     logger.info("Starting FreeRouter Service")
     logger.info("=" * 60)
@@ -45,7 +50,8 @@ def start_litellm():
             "litellm",
             "--config", "config/config.yaml",
             "--port", str(port),
-            "--host", host
+            "--host", host,
+            "--detailed_debug"
         ]
 
         logger.info(f"Executing: {' '.join(cmd)}")
