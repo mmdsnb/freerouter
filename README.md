@@ -1,86 +1,88 @@
 # FreeRouter
 
-🛠️ **LiteLLM 配置管理工具** - 自动化多 Provider 配置生成
+🛠️ **LiteLLM Configuration Management Tool** - Automated Multi-Provider Configuration Generation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-## 这是什么？
+[中文文档](README_ZH.md) | English
 
-FreeRouter 是 [LiteLLM](https://github.com/BerriAI/litellm) 的**配置管理辅助工具**。
+## What is this?
 
-**核心功能**：
-- 📋 自动从各 Provider API 获取模型列表
-- ⚙️ 生成 LiteLLM 的 `config.yaml` 配置文件
-- 🚀 一键启动 LiteLLM 服务
+FreeRouter is a **configuration management tool** for [LiteLLM](https://github.com/BerriAI/litellm).
 
-**重要**：
-- FreeRouter 不提供 AI 服务，所有 API 和路由由 [LiteLLM](https://github.com/BerriAI/litellm) 提供
-- 建议先了解 [LiteLLM 文档](https://docs.litellm.ai/)
-- 如果你熟悉手写配置，可能不需要 FreeRouter
+**Core Features**:
+- 📋 Automatically fetch model lists from Provider APIs
+- ⚙️ Generate LiteLLM `config.yaml` configuration files
+- 🚀 One-command startup of LiteLLM service
 
-## 支持的 Provider
+**Important**:
+- FreeRouter does not provide AI services; all APIs and routing are provided by [LiteLLM](https://github.com/BerriAI/litellm)
+- Recommend reading [LiteLLM Documentation](https://docs.litellm.ai/) first
+- If you're familiar with writing LiteLLM configs manually, you may not need FreeRouter
 
-| Provider | 类型 | 免费 |
+## Supported Providers
+
+| Provider | Type | Free |
 |----------|------|------|
-| **OpenRouter** | 文本、视觉、多模态 | ✅ 部分免费 |
-| **iFlow** | 文本 | ✅ 全部免费 |
-| **Ollama** | 文本、视觉 | ✅ 本地免费 |
-| **ModelScope** | 文本 | ✅ 有免费额度 |
-| **自定义** | 任意 | 视服务而定 |
+| **OpenRouter** | Text, Vision, Multimodal | ✅ Partially Free |
+| **iFlow** | Text | ✅ Fully Free |
+| **Ollama** | Text, Vision | ✅ Local Free |
+| **ModelScope** | Text | ✅ Free Quota |
+| **Custom** | Any | Depends |
 
-**免费 Provider**：
-- **OpenRouter** (https://openrouter.ai/) - 30+ 免费模型（GPT-3.5、Gemini、Llama 等）
-- **iFlow** (https://iflow.cn/) - 中文免费模型（Qwen、GLM、DeepSeek 等）
+**Free Providers**:
+- **OpenRouter** (https://openrouter.ai/) - 30+ free models (GPT-3.5, Gemini, Llama, etc.)
+- **iFlow** (https://iflow.cn/) - Chinese free models (Qwen, GLM, DeepSeek, etc.)
 
-## 快速开始
+## Quick Start
 
-### 1. 安装
+### 1. Installation
 
 ```bash
 pip install freerouter
 ```
 
-或从源码：
+Or from source:
 ```bash
 git clone https://github.com/mmdsnb/freerouter.git
 cd freerouter
 pip install -e .
 ```
 
-### 2. 初始化配置
+### 2. Initialize Configuration
 
 ```bash
 freerouter init
 ```
 
-### 3. 配置 Provider
+### 3. Configure Providers
 
-编辑 `.env` 添加 API Key：
+Edit `.env` to add API keys:
 ```bash
 OPENROUTER_API_KEY=sk-or-v1-xxxxx
 IFLOW_API_KEY=sk-xxxxx
 ```
 
-编辑 `config/providers.yaml` 启用服务：
+Edit `config/providers.yaml` to enable services:
 ```yaml
 providers:
-  # OpenRouter - 免费模型
+  # OpenRouter - Free models
   - type: openrouter
     enabled: true
     api_key: ${OPENROUTER_API_KEY}
 
-  # iFlow - 中文免费模型
+  # iFlow - Chinese free models
   - type: iflow
     enabled: true
     api_key: ${IFLOW_API_KEY}
 
-  # Ollama - 本地模型
+  # Ollama - Local models
   - type: ollama
     enabled: true
     api_base: http://localhost:11434
 
-  # ModelScope - 中文模型
+  # ModelScope - Chinese models
   - type: modelscope
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
@@ -88,7 +90,7 @@ providers:
       - qwen-turbo
       - qwen-plus
 
-  # 自定义服务
+  # Custom service
   - type: static
     enabled: false
     model_name: gpt-3.5-turbo
@@ -97,58 +99,58 @@ providers:
     api_key: ${YOUR_KEY}
 ```
 
-### 4. 启动服务
+### 4. Start Service
 
 ```bash
-# 获取模型列表并启动服务
+# Fetch models and start service
 freerouter
 
-# 或分步执行
-freerouter fetch   # 获取模型列表
-freerouter start   # 启动服务
+# Or step by step
+freerouter fetch   # Fetch model list
+freerouter start   # Start service
 ```
 
-服务将在 `http://localhost:4000` 启动。
+Service will start at `http://localhost:4000`.
 
-### 5. 使用 API
+### 5. Use API
 
-所有 API 使用方式请参考 [LiteLLM 文档](https://docs.litellm.ai/)。
+All API usage follows [LiteLLM Documentation](https://docs.litellm.ai/).
 
 ```bash
-# 查看可用模型
+# List available models
 curl http://localhost:4000/v1/models
 
-# 调用模型（OpenAI 兼容 API）
+# Call model (OpenAI-compatible API)
 curl http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-1234" \
   -d '{
     "model": "google/gemini-pro",
-    "messages": [{"role": "user", "content": "你好"}]
+    "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
 
-## CLI 命令
+## CLI Commands
 
 ```bash
-freerouter              # 启动服务（默认命令，自动 fetch + start）
-freerouter init         # 初始化配置目录
-freerouter fetch        # 获取模型列表并生成配置
-freerouter start        # 启动 LiteLLM 服务
-freerouter list         # 查看已配置的模型
-freerouter --version    # 查看版本
-freerouter --help       # 查看帮助
+freerouter              # Start service (default, auto fetch + start)
+freerouter init         # Initialize config directory
+freerouter fetch        # Fetch model list and generate config
+freerouter start        # Start LiteLLM service
+freerouter list         # List configured models
+freerouter --version    # Show version
+freerouter --help       # Show help
 ```
 
-**配置文件查找顺序**：
-1. `./config/providers.yaml` (当前目录)
-2. `~/.config/freerouter/providers.yaml` (用户配置)
+**Config file search order**:
+1. `./config/providers.yaml` (current directory)
+2. `~/.config/freerouter/providers.yaml` (user config)
 
-## 许可证
+## License
 
-MIT License - 详见 [LICENSE](LICENSE)
+MIT License - see [LICENSE](LICENSE)
 
-## 链接
+## Links
 
 - [GitHub](https://github.com/mmdsnb/freerouter)
 - [LiteLLM](https://github.com/BerriAI/litellm)
@@ -158,4 +160,4 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 ---
 
-如有问题，欢迎提 [Issue](https://github.com/mmdsnb/freerouter/issues)
+For issues, please visit [Issues](https://github.com/mmdsnb/freerouter/issues)
