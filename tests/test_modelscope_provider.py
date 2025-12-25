@@ -25,7 +25,7 @@ class TestModelScopeProvider:
         assert provider.provider_name == "modelscope"
         assert provider.api_key == ""
 
-    @patch('freerouter.providers.modelscope.requests.get')
+    @patch('freerouter.providers.oai.requests.get')
     def test_fetch_models_success(self, mock_get):
         """Test fetching models successfully"""
         # Mock API response
@@ -55,7 +55,7 @@ class TestModelScopeProvider:
         assert "https://api-inference.modelscope.cn/v1/models" in call_args[0]
         assert call_args[1]["headers"]["Authorization"] == "Bearer test-key"
 
-    @patch('freerouter.providers.modelscope.requests.get')
+    @patch('freerouter.providers.oai.requests.get')
     def test_fetch_models_api_error(self, mock_get):
         """Test handling API errors"""
         mock_get.side_effect = Exception("API Error")
@@ -65,7 +65,7 @@ class TestModelScopeProvider:
 
         assert models == []
 
-    @patch('freerouter.providers.modelscope.requests.get')
+    @patch('freerouter.providers.oai.requests.get')
     def test_fetch_models_invalid_response(self, mock_get):
         """Test handling invalid response format"""
         mock_response = Mock()

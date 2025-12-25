@@ -31,7 +31,8 @@
       "Bash(freerouter list:*)",
       "Bash(timeout 5 freerouter start:*)",
       "Bash(freerouter)",
-      "Bash(git grep:*)"
+      "Bash(git grep:*)",
+      "Bash(wc:*)"
     ]
   }
 }
