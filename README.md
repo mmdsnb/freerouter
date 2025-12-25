@@ -1,45 +1,47 @@
 # FreeRouter
 
-🚀 **免费 AI 模型路由服务** - 聚合多个免费 AI 服务，统一接口调用文本、视觉、多模态模型
+🛠️ **LiteLLM 配置管理工具** - 自动化多 Provider 配置生成
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 ## 这是什么？
 
-FreeRouter 是一个 **AI 模型服务聚合器**，让你可以：
+FreeRouter 是 [LiteLLM](https://github.com/BerriAI/litellm) 的**配置管理辅助工具**，帮你：
 
-- 🌐 **聚合多种 AI 服务** - 支持文本、视觉、多模态模型（GPT、Claude、Gemini Vision 等）
-- 🔄 **统一接口调用** - OpenAI 兼容 API，无需改代码
-- ⚡ **自动负载均衡** - 请求自动分发到可用模型
-- 🔁 **故障自动切换** - 一个服务挂了自动用其他的
-- 📝 **配置即代码** - 一个 YAML 文件搞定所有配置
+- 📋 **自动获取模型列表** - 从各个 Provider API 动态发现可用模型
+- ⚙️ **生成 LiteLLM 配置** - 自动生成标准的 `config.yaml`
+- 🎯 **简化配置流程** - 用简单的 `providers.yaml` 管理多个 Provider
+- 🚀 **一键启动服务** - 获取配置 + 启动 LiteLLM 一步完成
 
-简单来说：**把多个免费的 AI 服务整合成一个稳定可靠的 API 接口。**
+**重要**:
+- FreeRouter 本身不提供 AI 路由功能，所有 API 和路由能力由 [LiteLLM](https://github.com/BerriAI/litellm) 提供
+- 建议先了解 [LiteLLM 文档](https://docs.litellm.ai/) 以理解配置和使用方式
+- 如果你已经熟悉手写 LiteLLM 配置，可能不需要 FreeRouter
 
 ## 为什么需要这个？
 
+**场景**: 你想用 LiteLLM 聚合多个 AI Provider，但是...
+
 **问题**:
-- 免费 AI 服务不稳定，经常挂
-- 每个服务 API 不一样，切换麻烦
-- 想用多个服务但管理复杂
-- 文本、视觉模型分散在不同平台
+- 手动写 LiteLLM 配置文件太繁琐（几十上百个模型）
+- 每个 Provider 的模型列表要自己查文档
+- 模型更新了需要手动维护配置
+- 多个 Provider 配置容易出错
 
-**解决**:
-```python
-# 不用这个 ❌
-if openrouter_down:
-    try ollama
-    if ollama_down:
-        try modelscope
-        ...
+**FreeRouter 的解决**:
+```yaml
+# 你只需要写简单的 providers.yaml
+providers:
+  - type: openrouter
+    enabled: true
+    api_key: ${OPENROUTER_API_KEY}
 
-# 用这个 ✅
-response = client.chat.completions.create(
-    model="google/gemini-pro-vision",  # FreeRouter 自动选择可用服务
-    messages=[...]
-)
+# FreeRouter 自动获取模型列表并生成完整的 config.yaml
+# 然后启动 LiteLLM 服务
 ```
+
+**本质**: FreeRouter 是配置生成器 + LiteLLM 启动器，真正的 AI 服务由 LiteLLM 提供。
 
 ## 快速开始
 
@@ -102,61 +104,44 @@ freerouter
 
 服务将在 `http://localhost:4000` 启动。
 
-### 5. 使用服务
+### 5. 使用 API
+
+FreeRouter 启动的是标准 LiteLLM 服务，所有 API 使用方式请参考 [LiteLLM 文档](https://docs.litellm.ai/)。
+
+简单示例：
 
 ```bash
-# 文本模型
+# 查看可用模型
+curl http://localhost:4000/models
+
+# 调用模型（OpenAI 兼容 API）
 curl http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "google/gemini-pro",
     "messages": [{"role": "user", "content": "你好"}]
   }'
-
-# 视觉模型
-curl http://localhost:4000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "google/gemini-pro-vision",
-    "messages": [{
-      "role": "user",
-      "content": [
-        {"type": "text", "text": "这张图片里有什么？"},
-        {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}}
-      ]
-    }]
-  }'
 ```
 
-或者用 Python：
+Python 使用：
 ```python
 import openai
 
 client = openai.OpenAI(
-    api_key="dummy",
+    api_key="dummy",  # LiteLLM 默认不需要 key
     base_url="http://localhost:4000"
 )
 
-# 文本模型
 response = client.chat.completions.create(
     model="google/gemini-pro",
     messages=[{"role": "user", "content": "你好"}]
 )
-
-# 视觉模型
-response = client.chat.completions.create(
-    model="google/gemini-pro-vision",
-    messages=[{
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "描述这张图片"},
-            {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}}
-        ]
-    }]
-)
-
 print(response.choices[0].message.content)
 ```
+
+**更多用法**：
+- 流式响应、函数调用、视觉模型等用法请查看 [LiteLLM 文档](https://docs.litellm.ai/)
+- FreeRouter 只负责配置生成，API 功能全部由 LiteLLM 提供
 
 ## CLI 命令
 
@@ -270,46 +255,23 @@ docker-compose logs -f
   api_key: ${YOUR_KEY}
 ```
 
-## 常见使用场景
+## 与 LiteLLM 的关系
 
-### 场景 1: 文本+视觉混合使用
+FreeRouter 做的事情：
+1. ✅ 从各个 Provider API 获取模型列表
+2. ✅ 生成 LiteLLM 的 `config.yaml` 配置文件
+3. ✅ 启动 LiteLLM 服务（可选）
 
-配置多个支持不同能力的服务：
+LiteLLM 做的事情：
+1. ✅ 提供统一的 OpenAI 兼容 API
+2. ✅ 路由请求到不同 Provider
+3. ✅ 负载均衡、故障切换、重试等
+4. ✅ 所有高级功能（流式、函数调用、缓存等）
 
-```yaml
-providers:
-  - type: openrouter  # 文本和视觉
-    enabled: true
+**简单理解**: FreeRouter 是"配置文件生成器"，LiteLLM 是"AI 服务代理"。
 
-  - type: ollama      # 本地文本模型
-    enabled: true
-```
-
-### 场景 2: 提高稳定性
-
-配置多个服务作为备份：
-
-```yaml
-providers:
-  - type: openrouter
-    enabled: true
-
-  - type: modelscope
-    enabled: true
-```
-
-### 场景 3: 本地 + 云端
-
-本地 Ollama 跑小任务（快、免费），复杂任务调云端：
-
-```yaml
-providers:
-  - type: ollama
-    enabled: true
-
-  - type: openrouter
-    enabled: true
-```
+**如果你会手写配置**: 可以直接用 LiteLLM，不需要 FreeRouter。
+**如果配置太多太繁琐**: FreeRouter 帮你自动生成，省时省力。
 
 ## 更新服务
 
@@ -364,25 +326,36 @@ freerouter start
 
 ## 常见问题
 
-### Q: 完全免费吗？
+### Q: FreeRouter 和 LiteLLM 什么关系？
 
-A: FreeRouter 本身免费开源。但使用的 AI 服务可能需要 API Key 或有免费额度限制。推荐 OpenRouter（有免费模型）和 Ollama（完全免费）。
+A: FreeRouter 是 LiteLLM 的配置管理工具。它帮你自动生成 LiteLLM 配置文件，然后启动 LiteLLM 服务。所有 API 功能由 LiteLLM 提供。
+
+### Q: 我需要了解 LiteLLM 吗？
+
+A: **强烈建议**先看 [LiteLLM 文档](https://docs.litellm.ai/)，了解：
+- LiteLLM 的配置格式
+- 支持的 API 功能
+- 路由和负载均衡策略
+
+FreeRouter 只是帮你生成配置，具体怎么用还是要看 LiteLLM。
+
+### Q: 我已经会写 LiteLLM 配置了，还需要 FreeRouter 吗？
+
+A: 不一定。如果你的配置很简单，或者喜欢手动控制，直接用 LiteLLM 就好。FreeRouter 适合管理很多 Provider 和模型的场景。
 
 ### Q: 支持哪些模型？
 
-A: 取决于你配置的 Provider。OpenRouter 支持 100+ 文本和视觉模型，Ollama 支持所有开源模型。
+A: 取决于：
+1. 你配置的 Provider（OpenRouter、Ollama 等）
+2. LiteLLM 支持的模型格式
 
-### Q: 支持视觉模型吗？
-
-A: 是的！支持 Gemini Pro Vision、GPT-4 Vision、LLaVA 等视觉和多模态模型。
-
-### Q: 性能怎么样？
-
-A: FreeRouter 只是代理层，性能主要取决于底层服务。增加的延迟 < 50ms。
+查看 [LiteLLM 支持的 Provider](https://docs.litellm.ai/docs/providers)
 
 ### Q: 可以商用吗？
 
-A: FreeRouter 本身是 MIT 协议，可以商用。但请确保你使用的 AI 服务允许商用。
+A: FreeRouter 本身是 MIT 协议，可以商用。但：
+- 确保你使用的 AI 服务允许商用
+- LiteLLM 的许可证请查看其官方说明
 
 ## 文档
 
