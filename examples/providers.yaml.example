@@ -20,6 +20,11 @@ providers:
       - qwen-turbo
       - qwen-plus
 
+  # iFlow - Free Chinese AI models (all free)
+  - type: iflow
+    enabled: false
+    api_key: ${IFLOW_API_KEY}
+
   # Static - For any custom OpenAI-compatible endpoint
   - type: static
     enabled: false

@@ -11,6 +11,7 @@ from freerouter.providers.base import BaseProvider
 from freerouter.providers.openrouter import OpenRouterProvider
 from freerouter.providers.ollama import OllamaProvider
 from freerouter.providers.modelscope import ModelScopeProvider
+from freerouter.providers.iflow import IFlowProvider
 from freerouter.providers.static import StaticProvider
 
 
@@ -56,6 +57,12 @@ class ProviderFactory:
             return ModelScopeProvider(
                 api_key=resolved_config.get("api_key"),
                 models=resolved_config.get("models"),
+                **resolved_config.get("options", {})
+            )
+
+        elif provider_type == "iflow":
+            return IFlowProvider(
+                api_key=resolved_config.get("api_key"),
                 **resolved_config.get("options", {})
             )
 
