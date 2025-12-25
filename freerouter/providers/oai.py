@@ -18,7 +18,7 @@ class OAIProvider(BaseProvider):
         初始化 OAI Provider
 
         Args:
-            name: 供应商名称 (如 excelleai, mycompany 等)
+            name: 供应商名称 (如 myservice, mycompany 等)
             api_base: API 基础地址 (如 https://api.example.com/v1)
             api_key: API Key
         """

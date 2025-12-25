@@ -30,7 +30,8 @@
       "Bash(freerouter --version:*)",
       "Bash(freerouter list:*)",
       "Bash(timeout 5 freerouter start:*)",
-      "Bash(freerouter)"
+      "Bash(freerouter)",
+      "Bash(git grep:*)"
     ]
   }
 }

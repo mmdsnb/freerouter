@@ -13,15 +13,15 @@ class TestOAIProvider:
     def test_create_provider(self):
         """Test creating OAI provider"""
         provider = OAIProvider(
-            name="excelleai",
-            api_base="https://excelleai.com/v1",
+            name="myservice",
+            api_base="https://api.example.com/v1",
             api_key="test-key"
         )
 
-        assert provider.provider_name == "excelleai"
-        assert provider.name == "excelleai"
+        assert provider.provider_name == "myservice"
+        assert provider.name == "myservice"
         assert provider.api_key == "test-key"
-        assert provider.api_base == "https://excelleai.com/v1"
+        assert provider.api_base == "https://api.example.com/v1"
 
     def test_create_provider_without_key(self):
         """Test creating provider without API key"""
@@ -60,8 +60,8 @@ class TestOAIProvider:
         mock_get.return_value = mock_response
 
         provider = OAIProvider(
-            name="excelleai",
-            api_base="https://excelleai.com/v1",
+            name="testservice",
+            api_base="https://api.test.com/v1",
             api_key="test-key"
         )
         models = provider.fetch_models()
@@ -74,7 +74,7 @@ class TestOAIProvider:
         # Verify API was called correctly
         mock_get.assert_called_once()
         call_args = mock_get.call_args
-        assert "https://excelleai.com/v1/models" in call_args[0]
+        assert "https://api.test.com/v1/models" in call_args[0]
         assert call_args[1]["headers"]["Authorization"] == "Bearer test-key"
 
     @patch('freerouter.providers.oai.requests.get')
@@ -135,8 +135,8 @@ class TestOAIProvider:
     def test_format_service(self):
         """Test formatting model as LiteLLM service"""
         provider = OAIProvider(
-            name="excelleai",
-            api_base="https://excelleai.com/v1",
+            name="testservice",
+            api_base="https://api.test.com/v1",
             api_key="test-key-123"
         )
 
@@ -151,7 +151,7 @@ class TestOAIProvider:
 
         assert service["model_name"] == "claude-sonnet"
         assert service["litellm_params"]["model"] == "openai/claude-sonnet"
-        assert service["litellm_params"]["api_base"] == "https://excelleai.com/v1"
+        assert service["litellm_params"]["api_base"] == "https://api.test.com/v1"
         assert service["litellm_params"]["api_key"] == "test-key-123"
 
     def test_format_service_with_unknown_model(self):
