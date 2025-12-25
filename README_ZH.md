@@ -82,13 +82,10 @@ providers:
     enabled: true
     api_base: http://localhost:11434
 
-  # ModelScope - 中文模型
+  # ModelScope - 中文模型（每天 2000 次免费）
   - type: modelscope
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
-    models:
-      - qwen-turbo
-      - qwen-plus
 
   # 自定义服务
   - type: static

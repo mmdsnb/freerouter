@@ -82,13 +82,10 @@ providers:
     enabled: true
     api_base: http://localhost:11434
 
-  # ModelScope - Chinese models
+  # ModelScope - Chinese models (2000 calls/day free)
   - type: modelscope
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
-    models:
-      - qwen-turbo
-      - qwen-plus
 
   # Custom service
   - type: static

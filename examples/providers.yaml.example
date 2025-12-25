@@ -12,13 +12,10 @@ providers:
     enabled: false
     api_base: http://localhost:11434
 
-  # ModelScope/DashScope - Chinese LLM platform
+  # ModelScope - Chinese AI model platform (free quota: 2000 calls/day, 500/model)
   - type: modelscope
     enabled: false
     api_key: ${MODELSCOPE_API_KEY}
-    models:
-      - qwen-turbo
-      - qwen-plus
 
   # iFlow - Free Chinese AI models (all free)
   - type: iflow

@@ -56,7 +56,6 @@ class ProviderFactory:
         elif provider_type == "modelscope":
             return ModelScopeProvider(
                 api_key=resolved_config.get("api_key"),
-                models=resolved_config.get("models"),
                 **resolved_config.get("options", {})
             )
 
