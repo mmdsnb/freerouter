@@ -21,13 +21,13 @@ FreeRouter 是 [LiteLLM](https://github.com/BerriAI/litellm) 的**配置管理�
 
 ## 支持的 Provider
 
-| Provider | 类型 | 免费 | 推荐 |
-|----------|------|------|------|
-| **OpenRouter** | 文本、视觉、多模态 | ✅ 部分免费 | ⭐⭐⭐⭐⭐ |
-| **iFlow** | 文本 | ✅ 全部免费 | ⭐⭐⭐⭐⭐ |
-| **Ollama** | 文本、视觉 | ✅ 本地免费 | ⭐⭐⭐⭐ |
-| **ModelScope** | 文本 | ✅ 有免费额度 | ⭐⭐⭐ |
-| **自定义** | 任意 | 视服务而定 | ⭐⭐⭐ |
+| Provider | 类型 | 免费 |
+|----------|------|------|
+| **OpenRouter** | 文本、视觉、多模态 | ✅ 部分免费 |
+| **iFlow** | 文本 | ✅ 全部免费 |
+| **Ollama** | 文本、视觉 | ✅ 本地免费 |
+| **ModelScope** | 文本 | ✅ 有免费额度 |
+| **自定义** | 任意 | 视服务而定 |
 
 **免费 Provider**：
 - **OpenRouter** (https://openrouter.ai/) - 30+ 免费模型（GPT-3.5、Gemini、Llama 等）
