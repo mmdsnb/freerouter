@@ -32,7 +32,10 @@
       "Bash(timeout 5 freerouter start:*)",
       "Bash(freerouter)",
       "Bash(git grep:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(uv run:*)",
+      "Bash(timeout 15 uv run:*)",
+      "Bash(timeout 3 uv run:*)"
     ]
   }
 }

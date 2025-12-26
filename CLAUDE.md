@@ -34,6 +34,35 @@
 - [ ] Internationalization (English for user-facing messages)
 - [ ] Comments only where logic is non-obvious
 
+## Recent Architectural Decisions
+
+### Service Management (2025-12-26)
+**Decision**: Implement daemon-style service with detached process management
+
+**Problem**: Original `freerouter start` kept the terminal occupied, requiring users to keep it open.
+
+**Solution**:
+- Use `subprocess.Popen` with `start_new_session=True` to detach litellm from parent process
+- Monitor startup by tailing log file until "Uvicorn running" message appears
+- Return terminal to user once service confirmed running
+- Store PID in `freerouter.pid` for service management
+
+**Commands**:
+- `freerouter start` - Start service, monitor startup, detach when ready
+- `freerouter stop` - Gracefully stop the service using PID file
+- `freerouter logs` - Tail real-time logs from `freerouter.log`
+
+**Why This Approach**:
+- Simple: No external dependencies (systemd, supervisor, etc.)
+- Portable: Works on any Unix-like system
+- User-friendly: Show startup process, then release terminal
+- Debuggable: All logs in one file, easy to access
+
+**Files**:
+- `freerouter/cli/main.py`: `cmd_start()`, `cmd_stop()`, `cmd_logs()`
+- Log file: `{config_dir}/freerouter.log`
+- PID file: `{config_dir}/freerouter.pid`
+
 ## Core Design Principles
 
 ### 1. KISS (Keep It Simple, Stupid)

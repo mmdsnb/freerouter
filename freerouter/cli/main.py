@@ -101,6 +101,7 @@ def cmd_start(args):
     """Start FreeRouter service"""
     import os
     import subprocess
+    import time
 
     config_mgr = ConfigManager()
 
@@ -111,6 +112,25 @@ def cmd_start(args):
         logger.info("Run 'freerouter fetch' first to generate config")
         sys.exit(1)
 
+    # Log file path
+    log_dir = output_config.parent
+    log_file = log_dir / "freerouter.log"
+    pid_file = log_dir / "freerouter.pid"
+
+    # Check if already running
+    if pid_file.exists():
+        with open(pid_file) as f:
+            old_pid = f.read().strip()
+        try:
+            # Check if process is still running
+            os.kill(int(old_pid), 0)
+            logger.error(f"FreeRouter is already running (PID: {old_pid})")
+            logger.info("Use 'freerouter logs' to view logs or kill the process first")
+            sys.exit(1)
+        except (OSError, ValueError):
+            # Process not running, remove stale pid file
+            pid_file.unlink()
+
     port = os.getenv("LITELLM_PORT", "4000")
     host = os.getenv("LITELLM_HOST", "0.0.0.0")
 
@@ -120,6 +140,7 @@ def cmd_start(args):
     logger.info(f"Host: {host}")
     logger.info(f"Port: {port}")
     logger.info(f"Config: {output_config}")
+    logger.info(f"Log file: {log_file}")
     logger.info("=" * 60)
 
     try:
@@ -130,16 +151,84 @@ def cmd_start(args):
             "--host", host
         ]
 
-        subprocess.run(cmd, check=True)
+        # Open log file
+        log_handle = open(log_file, "a")
 
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to start litellm: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logger.info("\nShutting down FreeRouter service...")
-        sys.exit(0)
+        # Start process as daemon (detached from parent)
+        process = subprocess.Popen(
+            cmd,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,  # Detach from parent process
+            bufsize=1
+        )
+
+        # Write PID file
+        with open(pid_file, "w") as f:
+            f.write(str(process.pid))
+
+        # Wait and monitor log file for startup success
+        startup_success = False
+        startup_timeout = 30
+        start_time = time.time()
+
+        print("\nWaiting for service to start...")
+        time.sleep(2)  # Give it a moment to start writing logs
+
+        # Tail the log file to check for startup
+        last_pos = 0
+        while time.time() - start_time < startup_timeout:
+            try:
+                with open(log_file, "r") as f:
+                    f.seek(last_pos)
+                    new_lines = f.readlines()
+                    last_pos = f.tell()
+
+                    for line in new_lines:
+                        print(line, end="")
+
+                        if "Uvicorn running on" in line:
+                            startup_success = True
+                            break
+
+                        if "error" in line.lower() and "failed" in line.lower():
+                            logger.error("\nStartup failed! Check logs for details.")
+                            process.terminate()
+                            pid_file.unlink()
+                            sys.exit(1)
+
+                if startup_success:
+                    break
+
+                time.sleep(0.5)
+
+            except FileNotFoundError:
+                time.sleep(0.5)
+                continue
+
+        if startup_success:
+            logger.info("\n" + "=" * 60)
+            logger.info("✓ FreeRouter started successfully!")
+            logger.info(f"  PID: {process.pid}")
+            logger.info(f"  URL: http://{host}:{port}")
+            logger.info(f"  Logs: {log_file}")
+            logger.info("")
+            logger.info("Commands:")
+            logger.info("  freerouter logs      - View real-time logs")
+            logger.info("  freerouter stop      - Stop the service")
+            logger.info("=" * 60)
+        else:
+            logger.error("\nStartup timeout! The service may still be starting.")
+            logger.info(f"Check logs: tail -f {log_file}")
+            logger.info(f"If failed, kill process: kill {process.pid}")
+
     except FileNotFoundError:
         logger.error("litellm not found! Please install: pip install litellm")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Failed to start: {e}")
+        if pid_file.exists():
+            pid_file.unlink()
         sys.exit(1)
 
 
@@ -177,10 +266,124 @@ def cmd_list(args):
     print(f"\nTotal: {len(models)} models")
 
 
+def cmd_stop(args):
+    """Stop FreeRouter service"""
+    import os
+    import time
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+    log_dir = output_config.parent
+    pid_file = log_dir / "freerouter.pid"
+
+    # Check if service is running
+    if not pid_file.exists():
+        logger.error("FreeRouter is not running")
+        sys.exit(1)
+
+    with open(pid_file) as f:
+        pid = f.read().strip()
+
+    try:
+        pid_int = int(pid)
+        os.kill(pid_int, 0)  # Check if running
+    except (OSError, ValueError):
+        logger.error(f"FreeRouter process (PID: {pid}) is not running")
+        pid_file.unlink()
+        sys.exit(1)
+
+    logger.info(f"Stopping FreeRouter service (PID: {pid})...")
+
+    try:
+        # Send SIGTERM
+        os.kill(pid_int, 15)
+
+        # Wait for process to stop
+        for i in range(10):
+            try:
+                os.kill(pid_int, 0)
+                time.sleep(0.5)
+            except OSError:
+                break
+
+        # Check if stopped
+        try:
+            os.kill(pid_int, 0)
+            logger.error("Failed to stop service gracefully, use: kill -9 {pid}")
+            sys.exit(1)
+        except OSError:
+            pid_file.unlink()
+            logger.info("✓ FreeRouter stopped successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to stop service: {e}")
+        sys.exit(1)
+
+
 def cmd_logs(args):
-    """Show service logs (placeholder)"""
-    print("Log viewing coming soon!")
-    print("For now, run 'freerouter start' in foreground to see logs")
+    """Show service logs in real-time"""
+    import os
+    import time
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+    log_dir = output_config.parent
+    log_file = log_dir / "freerouter.log"
+    pid_file = log_dir / "freerouter.pid"
+
+    # Check if service is running
+    if not pid_file.exists():
+        logger.error("FreeRouter is not running")
+        logger.info("Start it with: freerouter start")
+        sys.exit(1)
+
+    with open(pid_file) as f:
+        pid = f.read().strip()
+
+    try:
+        os.kill(int(pid), 0)
+    except (OSError, ValueError):
+        logger.error(f"FreeRouter process (PID: {pid}) is not running")
+        logger.info("Start it with: freerouter start")
+        pid_file.unlink()
+        sys.exit(1)
+
+    # Check if log file exists
+    if not log_file.exists():
+        logger.error(f"Log file not found: {log_file}")
+        sys.exit(1)
+
+    logger.info(f"Showing logs from: {log_file}")
+    logger.info(f"Service PID: {pid}")
+    logger.info("Press Ctrl+C to exit\n")
+    logger.info("=" * 60)
+
+    # Tail the log file
+    try:
+        with open(log_file, "r") as f:
+            # Go to end of file
+            f.seek(0, 2)
+
+            while True:
+                line = f.readline()
+                if line:
+                    print(line, end="")
+                else:
+                    time.sleep(0.1)
+
+                    # Check if process is still running
+                    try:
+                        os.kill(int(pid), 0)
+                    except (OSError, ValueError):
+                        logger.info("\n" + "=" * 60)
+                        logger.info("Service stopped")
+                        break
+
+    except KeyboardInterrupt:
+        logger.info("\n" + "=" * 60)
+        logger.info("Stopped viewing logs")
+    except Exception as e:
+        logger.error(f"Error reading logs: {e}")
 
 
 def main():
@@ -214,6 +417,10 @@ def main():
     # list command
     parser_list = subparsers.add_parser("list", help="List available models")
     parser_list.set_defaults(func=cmd_list)
+
+    # stop command
+    parser_stop = subparsers.add_parser("stop", help="Stop FreeRouter service")
+    parser_stop.set_defaults(func=cmd_stop)
 
     # logs command
     parser_logs = subparsers.add_parser("logs", help="Show service logs")
