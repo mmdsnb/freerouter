@@ -2,6 +2,9 @@
 requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["freerouter", "freerouter.cli", "freerouter.core", "freerouter.providers"]
+
 [project]
 name = "freerouter"
 version = "0.1.1"
