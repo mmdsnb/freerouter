@@ -711,20 +711,17 @@ class TestStatusCommand:
         os.chdir(original_dir)
         shutil.rmtree(temp_dir)
 
-    def test_status_command_not_running(self, temp_config_dir, caplog):
+    def test_status_command_not_running(self, temp_config_dir, capsys):
         """Test status command when service is not running"""
-        caplog.set_level(logging.INFO)
-
         with patch('sys.argv', ['freerouter', 'status']):
             main()
 
-        # Check log output
-        assert "Not Running" in caplog.text
+        # Check console output (rich outputs to stdout)
+        captured = capsys.readouterr()
+        assert "Not Running" in captured.out
 
-    def test_status_command_running(self, temp_config_dir, caplog):
+    def test_status_command_running(self, temp_config_dir, capsys):
         """Test status command when service is running"""
-        caplog.set_level(logging.INFO)
-
         # Create PID file
         pid_file = temp_config_dir / "freerouter.pid"
         current_pid = os.getpid()
@@ -733,14 +730,13 @@ class TestStatusCommand:
         with patch('sys.argv', ['freerouter', 'status']):
             main()
 
-        # Check log output
-        assert "Running" in caplog.text
-        assert str(current_pid) in caplog.text
+        # Check console output
+        captured = capsys.readouterr()
+        assert "Running" in captured.out
+        assert str(current_pid) in captured.out
 
-    def test_status_command_stale_pid(self, temp_config_dir, caplog):
+    def test_status_command_stale_pid(self, temp_config_dir, capsys):
         """Test status command with stale PID file"""
-        caplog.set_level(logging.INFO)
-
         # Create PID file with non-existent PID
         pid_file = temp_config_dir / "freerouter.pid"
         pid_file.write_text("999999")
@@ -748,9 +744,10 @@ class TestStatusCommand:
         with patch('sys.argv', ['freerouter', 'status']):
             main()
 
-        # Check log output
-        assert "Not Running" in caplog.text
-        assert "stale" in caplog.text
+        # Check console output
+        captured = capsys.readouterr()
+        assert "Not Running" in captured.out
+        assert "stale" in captured.out
 
         # Verify PID file was cleaned up
         assert not pid_file.exists()
@@ -817,8 +814,8 @@ model_list:
             main()
 
         captured = capsys.readouterr()
-        # Check provider grouping
-        assert "[openai]" in captured.out or "[anthropic]" in captured.out or "[google]" in captured.out
+        # Check provider grouping (now uppercase)
+        assert "OPENAI" in captured.out or "ANTHROPIC" in captured.out or "GOOGLE" in captured.out
         assert "3 models across" in captured.out
 
     def test_list_compact_format(self, temp_config_dir, capsys):

@@ -243,7 +243,12 @@ def cmd_list(args):
     """List available models"""
     import os
     import yaml
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    from collections import defaultdict
 
+    console = Console()
     config_mgr = ConfigManager()
     output_config = config_mgr.get_output_config_path()
 
@@ -252,7 +257,7 @@ def cmd_list(args):
         logger.info("Run 'freerouter fetch' first to generate config")
         sys.exit(1)
 
-    # Show service status
+    # Show service status banner
     if is_service_running():
         log_dir = output_config.parent
         pid_file = log_dir / "freerouter.pid"
@@ -263,11 +268,9 @@ def cmd_list(args):
         host = os.getenv("LITELLM_HOST", "0.0.0.0")
         url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
 
-        print(f"\n● Service Running (PID: {pid}, {url})")
+        console.print(f"\n[green]● Service Running[/green] [dim](PID: {pid}, {url})[/dim]")
     else:
-        print(f"\n○ Service Not Running (start with: freerouter start)")
-
-    print("=" * 60)
+        console.print(f"\n[yellow]○ Service Not Running[/yellow] [dim](start with: freerouter start)[/dim]")
 
     with open(output_config) as f:
         config = yaml.safe_load(f)
@@ -275,11 +278,10 @@ def cmd_list(args):
     models = config.get("model_list", [])
 
     if not models:
-        print("No models configured.")
+        console.print("[yellow]No models configured.[/yellow]")
         return
 
-    # Group models by provider for better readability
-    from collections import defaultdict
+    # Group models by provider
     providers_models = defaultdict(list)
 
     for model in models:
@@ -288,19 +290,50 @@ def cmd_list(args):
         provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
         providers_models[provider].append(model_name)
 
-    # Print models grouped by provider in compact format
+    # Display each provider in a separate table
     for provider in sorted(providers_models.keys()):
         models_list = providers_models[provider]
-        print(f"\n[{provider}] ({len(models_list)} models)")
 
-        # Print in 2 columns for compact display
-        for i in range(0, len(models_list), 2):
-            left = models_list[i]
-            right = models_list[i + 1] if i + 1 < len(models_list) else ""
-            print(f"  {left:<50} {right}")
+        # Print provider header
+        console.print(f"\n[bold cyan]{provider.upper()}[/bold cyan] [dim]({len(models_list)} models)[/dim]")
 
-    print(f"\n{'=' * 60}")
-    print(f"Total: {len(models)} models across {len(providers_models)} providers")
+        # Create table for models
+        table = Table(
+            show_header=False,
+            box=None,
+            padding=(0, 1),
+            show_edge=False
+        )
+
+        # Calculate number of columns based on terminal width
+        # Assume average model name length of 40, add 3 columns if wide terminal
+        terminal_width = console.width
+        if terminal_width >= 160:  # Wide terminal
+            num_cols = 3
+        elif terminal_width >= 100:  # Medium terminal
+            num_cols = 2
+        else:  # Narrow terminal
+            num_cols = 1
+
+        # Add columns
+        for _ in range(num_cols):
+            table.add_column(style="white", overflow="fold")
+
+        # Add rows
+        for i in range(0, len(models_list), num_cols):
+            row = []
+            for j in range(num_cols):
+                idx = i + j
+                if idx < len(models_list):
+                    row.append(f"  • {models_list[idx]}")
+                else:
+                    row.append("")
+            table.add_row(*row)
+
+        console.print(table)
+
+    # Summary
+    console.print(f"[bold]Total:[/bold] [cyan]{len(models)}[/cyan] models across [cyan]{len(providers_models)}[/cyan] providers\n")
 
 
 def cmd_stop(args):
@@ -427,23 +460,25 @@ def cmd_status(args):
     """Show FreeRouter service status"""
     import os
     import time
-    import datetime
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
 
+    console = Console()
     config_mgr = ConfigManager()
     output_config = config_mgr.get_output_config_path()
     log_dir = output_config.parent
     pid_file = log_dir / "freerouter.pid"
     log_file = log_dir / "freerouter.log"
 
-    logger.info("=" * 60)
-    logger.info("FreeRouter Service Status")
-    logger.info("=" * 60)
-
     # Check if service is running
     if not pid_file.exists():
-        logger.info("Status: ○ Not Running")
-        logger.info("\nStart service with: freerouter start")
-        logger.info("=" * 60)
+        console.print(Panel.fit(
+            "[yellow]○ Not Running[/yellow]\n\n"
+            "Start service with: [cyan]freerouter start[/cyan]",
+            title="[bold]FreeRouter Service Status[/bold]",
+            border_style="yellow"
+        ))
         return
 
     try:
@@ -453,25 +488,29 @@ def cmd_status(args):
         # Check if process is running
         os.kill(pid, 0)
 
-        # Service is running
-        logger.info("Status: ● Running")
-        logger.info(f"PID: {pid}")
+        # Service is running - create info table
+        table = Table(show_header=False, box=None, padding=(0, 2))
+        table.add_column("Key", style="cyan", width=12)
+        table.add_column("Value", style="white")
+
+        table.add_row("Status", "[green]● Running[/green]")
+        table.add_row("PID", str(pid))
 
         # Get service URL
         port = os.getenv("LITELLM_PORT", "4000")
         host = os.getenv("LITELLM_HOST", "0.0.0.0")
         url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
-        logger.info(f"URL: {url}")
+        table.add_row("URL", f"[link={url}]{url}[/link]")
 
         # Config file
-        logger.info(f"Config: {output_config}")
+        table.add_row("Config", str(output_config))
 
         # Calculate uptime from PID file creation time
         if pid_file.exists():
             start_time = pid_file.stat().st_mtime
             uptime_seconds = time.time() - start_time
             uptime_str = format_uptime(uptime_seconds)
-            logger.info(f"Uptime: {uptime_str}")
+            table.add_row("Uptime", uptime_str)
 
         # Count models
         if output_config.exists():
@@ -479,21 +518,29 @@ def cmd_status(args):
             with open(output_config) as f:
                 config = yaml.safe_load(f)
             model_count = len(config.get("model_list", []))
-            logger.info(f"Models: {model_count} configured")
+            table.add_row("Models", f"{model_count} configured")
 
         # Log file
         if log_file.exists():
             log_size = log_file.stat().st_size / 1024  # KB
-            logger.info(f"Log: {log_file} ({log_size:.1f} KB)")
+            table.add_row("Log", f"{log_file} ({log_size:.1f} KB)")
+
+        console.print(Panel(
+            table,
+            title="[bold green]FreeRouter Service Status[/bold green]",
+            border_style="green"
+        ))
 
     except (OSError, ValueError):
         # Process not running, but PID file exists (stale)
-        logger.info("Status: ○ Not Running (stale PID file)")
-        logger.info(f"PID: {pid} (not found)")
-        logger.info("\nClean up and start: freerouter start")
+        console.print(Panel.fit(
+            f"[yellow]○ Not Running[/yellow] [dim](stale PID file)[/dim]\n"
+            f"PID: [dim]{pid} (not found)[/dim]\n\n"
+            "Clean up and start: [cyan]freerouter start[/cyan]",
+            title="[bold]FreeRouter Service Status[/bold]",
+            border_style="yellow"
+        ))
         pid_file.unlink()
-
-    logger.info("=" * 60)
 
 
 def format_uptime(seconds):
