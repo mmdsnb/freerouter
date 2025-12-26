@@ -8,6 +8,7 @@ import os
 import yaml
 import logging
 from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from freerouter.providers.base import BaseProvider
 from freerouter.core.factory import ProviderFactory
@@ -78,16 +79,32 @@ class FreeRouterFetcher:
 
     def fetch_all(self) -> List[Dict[str, Any]]:
         """
-        Fetch services from all providers
+        Fetch services from all providers in parallel
 
         Returns:
             List of service configurations for litellm
         """
         all_services = []
 
-        for provider in self.providers:
-            services = provider.get_services()
-            all_services.extend(services)
+        if not self.providers:
+            return all_services
+
+        # Use ThreadPoolExecutor for parallel fetching
+        with ThreadPoolExecutor(max_workers=len(self.providers)) as executor:
+            # Submit all provider fetch tasks
+            future_to_provider = {
+                executor.submit(provider.get_services): provider
+                for provider in self.providers
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_provider):
+                provider = future_to_provider[future]
+                try:
+                    services = future.result()
+                    all_services.extend(services)
+                except Exception as e:
+                    logger.error(f"Failed to fetch from {provider.provider_name}: {e}")
 
         return all_services
 

@@ -88,8 +88,8 @@ freerouter check [--full]
 
 #### 3. Technical Improvements
 
-- **Parallel Provider Fetching**: Use asyncio/ThreadPoolExecutor for faster `fetch` (1 day)
-- **Test Coverage**: 81% → 90%+ (cover ollama/openrouter providers) (2-3 days)
+- **Parallel Provider Fetching**: ✅ Completed (2025-12-26) - Use ThreadPoolExecutor for faster `fetch` (1 day)
+- **Test Coverage**: 81% → 83% (cover ollama/openrouter providers) (2-3 days)
 - **Error Messages**: Add context and suggestions to errors (ongoing)
 
 **v0.2.0 Timeline**: ~2 weeks
