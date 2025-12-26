@@ -5,15 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.2] - 2025-12-26
 
 ### Added
 - Parallel provider fetching using ThreadPoolExecutor for 3-5x faster `fetch` command
-- Benchmark script to demonstrate parallel fetching performance
+- Benchmark script to demonstrate parallel fetching performance (`tests/benchmark_parallel_fetch.py`)
+- Comprehensive performance documentation (`docs/PERFORMANCE.md`)
+- Feature documentation (`docs/features/parallel-fetching.md`)
 
 ### Performance
 - `freerouter fetch` now fetches from multiple providers concurrently
 - Typical speedup: 3-5x when using multiple providers (e.g., 2.5s → 0.5s with 5 providers)
+- Robust error handling: one provider failure doesn't block others
+
+### Testing
+- Added 2 new tests for parallel execution and error handling
+- All 97 tests passing with 83% coverage
 
 ## [0.1.1] - 2025-12-26
 

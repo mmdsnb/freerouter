@@ -7,7 +7,7 @@ packages = ["freerouter", "freerouter.cli", "freerouter.core", "freerouter.provi
 
 [project]
 name = "freerouter"
-version = "0.1.1"
+version = "0.1.2"
 description = "Free LLM Router Service based on LiteLLM"
 readme = "README.md"
 requires-python = ">=3.10"
