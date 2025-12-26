@@ -411,7 +411,13 @@ def backup_config(config_path: Path):
     backup_path = config_path.parent / f"{config_path.name}.backup.{timestamp}"
 
     shutil.copy2(config_path, backup_path)
+
+    # Show prominent backup message
+    logger.info("=" * 60)
     logger.info(f"✓ Backup created: {backup_path.name}")
+    logger.info(f"  Location: {backup_path}")
+    logger.info(f"  Restore: freerouter restore {backup_path.name}")
+    logger.info("=" * 60)
 
     # Cleanup old backups (keep only 5 most recent)
     cleanup_old_backups(config_path, keep=5)
@@ -515,6 +521,83 @@ def cmd_reload(args):
     logger.info("=" * 60)
 
 
+def cmd_restore(args):
+    """
+    Restore configuration from backup
+
+    Args:
+        args.backup_file: Backup file name or full path
+    """
+    import shutil
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+    config_dir = output_config.parent
+
+    backup_file = args.backup_file
+
+    # If just a filename, look in config directory
+    if not Path(backup_file).is_absolute():
+        backup_path = config_dir / backup_file
+    else:
+        backup_path = Path(backup_file)
+
+    # Check if backup exists
+    if not backup_path.exists():
+        logger.error(f"Backup file not found: {backup_path}")
+
+        # List available backups
+        available_backups = sorted(
+            config_dir.glob(f"{output_config.name}.backup.*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        )
+
+        if available_backups:
+            logger.info("\nAvailable backups:")
+            for backup in available_backups:
+                mtime = backup.stat().st_mtime
+                import datetime
+                timestamp = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                logger.info(f"  - {backup.name} ({timestamp})")
+            logger.info(f"\nUsage: freerouter restore <backup-file>")
+        else:
+            logger.info("No backups found")
+
+        sys.exit(1)
+
+    # Confirm restore
+    logger.info("=" * 60)
+    logger.info("Restore Configuration")
+    logger.info("=" * 60)
+    logger.info(f"From: {backup_path.name}")
+    logger.info(f"To:   {output_config}")
+
+    if not args.yes:
+        response = input("\nContinue? [y/N]: ").strip().lower()
+        if response != 'y':
+            logger.info("Restore cancelled")
+            sys.exit(0)
+
+    # Backup current config before restoring
+    if output_config.exists():
+        logger.info("Creating backup of current config...")
+        backup_config(output_config)
+
+    # Restore
+    try:
+        shutil.copy2(backup_path, output_config)
+        logger.info("=" * 60)
+        logger.info("✓ Configuration restored successfully")
+        logger.info("=" * 60)
+        logger.info(f"Restored from: {backup_path.name}")
+        logger.info("\nTo apply changes, run: freerouter reload")
+
+    except Exception as e:
+        logger.error(f"Failed to restore configuration: {e}")
+        sys.exit(1)
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -566,6 +649,22 @@ def main():
         help="Refresh configuration from providers before reloading"
     )
     parser_reload.set_defaults(func=cmd_reload)
+
+    # restore command
+    parser_restore = subparsers.add_parser(
+        "restore",
+        help="Restore configuration from backup"
+    )
+    parser_restore.add_argument(
+        "backup_file",
+        help="Backup file name (e.g., config.yaml.backup.20251226_120530)"
+    )
+    parser_restore.add_argument(
+        "-y", "--yes",
+        action="store_true",
+        help="Skip confirmation prompt"
+    )
+    parser_restore.set_defaults(func=cmd_restore)
 
     # Parse arguments
     args = parser.parse_args()

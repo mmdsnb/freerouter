@@ -144,6 +144,8 @@ freerouter start        # Start LiteLLM service (daemon mode)
 freerouter stop         # Stop LiteLLM service
 freerouter reload       # Reload service (restart)
 freerouter reload -r    # Reload with refresh (backup + fetch + restart)
+freerouter restore <backup-file>  # Restore config from backup
+freerouter restore <backup-file> -y  # Restore without confirmation
 freerouter logs         # Show service logs in real-time
 freerouter list         # List configured models
 freerouter --version    # Show version

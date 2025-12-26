@@ -46,7 +46,8 @@
       "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 git push:*)",
       "Bash(git tag:*)",
       "Bash(uv pip install:*)",
-      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh release:*)"
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh release:*)",
+      "Bash(echo:*)"
     ]
   }
 }
