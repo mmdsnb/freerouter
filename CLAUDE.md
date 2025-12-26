@@ -33,6 +33,44 @@
 - [ ] No hardcoded values (use config/env vars)
 - [ ] Internationalization (English for user-facing messages)
 - [ ] Comments only where logic is non-obvious
+- [ ] **Tests written for new features or modified code** ✅
+
+### Testing Requirements
+**CRITICAL**: Every feature implementation or modification MUST include corresponding pytest tests.
+
+**Test Coverage Requirements**:
+- New features: Write tests BEFORE or IMMEDIATELY AFTER implementation
+- Bug fixes: Add regression test to prevent recurrence
+- Refactoring: Ensure existing tests still pass
+- Minimum coverage: 80% (aim for 90%+)
+
+**Test Organization**:
+```
+tests/
+├── test_cli.py           # CLI command tests
+├── test_providers.py     # Provider implementation tests
+├── test_fetcher.py       # Fetcher logic tests
+├── test_config.py        # Configuration management tests
+└── conftest.py           # Shared fixtures
+```
+
+**What to Test**:
+1. **Happy Path**: Normal usage scenarios
+2. **Edge Cases**: Boundary conditions, empty inputs
+3. **Error Handling**: Invalid inputs, missing files, network errors
+4. **Integration**: Component interactions
+
+**How to Run Tests**:
+```bash
+pytest                      # Run all tests
+pytest tests/test_cli.py   # Run specific test file
+pytest -v                  # Verbose output
+pytest --cov=freerouter    # With coverage report
+```
+
+**Test Naming Convention**:
+- `test_<function>_<scenario>()` - Example: `test_start_service_success()`
+- `test_<function>_<error_condition>()` - Example: `test_start_service_no_config()`
 
 ## Recent Architectural Decisions
 

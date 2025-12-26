@@ -52,10 +52,12 @@ class TestCLI:
         assert 'start' in captured.out
         assert 'list' in captured.out
 
-    def test_init_command(self, temp_config_dir):
-        """Test init command"""
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+    def test_init_command_interactive_project_level(self, temp_config_dir):
+        """Test init command with interactive prompt - project level"""
+        # Mock user input: choose option 2 (project-level)
+        with patch('builtins.input', return_value='2'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         # Check config directory was created
         config_dir = Path('config')
@@ -66,11 +68,75 @@ class TestCLI:
         providers_file = config_dir / 'providers.yaml'
         assert providers_file.exists()
 
-        # Check content
+        # Check content - all providers should be disabled
         content = providers_file.read_text()
         assert 'openrouter' in content
         assert 'iflow' in content
         assert 'modelscope' in content
+        # Verify all are disabled
+        assert content.count('enabled: false') >= 3
+        assert 'enabled: true' not in content
+
+    def test_init_command_interactive_user_level(self, temp_config_dir):
+        """Test init command with interactive prompt - user level"""
+        # Mock user input: choose option 1 (user-level)
+        with patch('builtins.input', return_value='1'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
+
+        # Check user config directory
+        user_config = Path.home() / '.config' / 'freerouter'
+        assert user_config.exists()
+
+        providers_file = user_config / 'providers.yaml'
+        assert providers_file.exists()
+
+        # Verify all providers disabled
+        content = providers_file.read_text()
+        assert 'enabled: false' in content
+        assert 'enabled: true' not in content
+
+    def test_init_command_overwrite_existing(self, temp_config_dir):
+        """Test init command with overwrite prompt"""
+        # Create initial config
+        with patch('builtins.input', return_value='2'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
+
+        # Modify the file
+        config_file = Path('config/providers.yaml')
+        original_content = config_file.read_text()
+        config_file.write_text("# Modified")
+
+        # Try to init again, choose to overwrite
+        with patch('builtins.input', side_effect=['2', 'y']):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
+
+        # Content should be reset to template
+        new_content = config_file.read_text()
+        assert new_content != "# Modified"
+        assert 'providers:' in new_content
+
+    def test_init_command_keep_existing(self, temp_config_dir):
+        """Test init command choosing not to overwrite"""
+        # Create initial config
+        with patch('builtins.input', return_value='2'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
+
+        # Modify the file
+        config_file = Path('config/providers.yaml')
+        config_file.write_text("# Modified")
+
+        # Try to init again, choose NOT to overwrite
+        with patch('builtins.input', side_effect=['2', 'n']):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
+
+        # Content should remain modified
+        content = config_file.read_text()
+        assert content == "# Modified"
 
     def test_init_command_already_exists(self, temp_config_dir, capsys):
         """Test init command when config already exists"""
@@ -149,6 +215,117 @@ model_list:
 
         # Check in logs instead of stdout
         assert 'not found' in caplog.text or 'Config not found' in caplog.text
+
+    def test_start_command_no_config(self, temp_config_dir, caplog):
+        """Test start command without config file"""
+        with pytest.raises(SystemExit):
+            with patch('sys.argv', ['freerouter', 'start']):
+                main()
+
+        assert 'Config not found' in caplog.text
+
+    @patch('subprocess.Popen')
+    def test_start_command_creates_pid_file(self, mock_popen, temp_config_dir):
+        """Test start command creates PID file"""
+        # Setup config
+        config_dir = Path('config')
+        config_dir.mkdir()
+        (config_dir / 'config.yaml').write_text('model_list: []')
+
+        # Mock process
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_process.stdout = iter(["INFO:     Uvicorn running on http://0.0.0.0:4000\n"])
+        mock_popen.return_value = mock_process
+
+        # Run start
+        with patch('sys.argv', ['freerouter', 'start']):
+            with patch('builtins.open', create=True) as mock_open:
+                try:
+                    main()
+                except StopIteration:
+                    pass  # Expected when mock iterator ends
+
+        # Verify Popen was called with correct params
+        mock_popen.assert_called_once()
+        call_args = mock_popen.call_args
+        assert 'litellm' in call_args[0][0]
+        assert call_args[1]['start_new_session'] is True
+
+    def test_stop_command_no_service(self, temp_config_dir, caplog):
+        """Test stop command when service is not running"""
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        with pytest.raises(SystemExit):
+            with patch('sys.argv', ['freerouter', 'stop']):
+                main()
+
+        assert 'not running' in caplog.text
+
+    @patch('os.kill')
+    def test_stop_command_success(self, mock_kill, temp_config_dir):
+        """Test stop command successfully stops service"""
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        # Create fake PID file
+        pid_file = config_dir / 'freerouter.pid'
+        pid_file.write_text('12345')
+
+        # Mock os.kill - first call succeeds (check), second kills, third fails (stopped)
+        mock_kill.side_effect = [None, None, OSError("Process not found")]
+
+        with patch('sys.argv', ['freerouter', 'stop']):
+            main()
+
+        # Verify kill was called
+        assert mock_kill.call_count >= 2
+        # PID file should be deleted
+        assert not pid_file.exists()
+
+    def test_logs_command_no_service(self, temp_config_dir, caplog):
+        """Test logs command when service is not running"""
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        with pytest.raises(SystemExit):
+            with patch('sys.argv', ['freerouter', 'logs']):
+                main()
+
+        assert 'not running' in caplog.text
+
+    @patch('os.kill')
+    def test_logs_command_displays_logs(self, mock_kill, temp_config_dir, capsys):
+        """Test logs command reads and displays log file"""
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        # Create fake PID file and log file
+        pid_file = config_dir / 'freerouter.pid'
+        pid_file.write_text('12345')
+
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text('Log line 1\nLog line 2\n')
+
+        # Mock os.kill to indicate process is running, then stopped
+        mock_kill.side_effect = [None, OSError("Process stopped")]
+
+        # Mock readline to return nothing (so loop exits quickly)
+        with patch('builtins.open', create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.__enter__.return_value = mock_file
+            mock_file.readline.return_value = ''
+            mock_open.return_value = mock_file
+
+            try:
+                with patch('sys.argv', ['freerouter', 'logs']):
+                    main()
+            except SystemExit:
+                pass
+
+        # Verify we tried to read the log file
+        mock_open.assert_called()
 
     def test_start_command_help(self, capsys):
         """Test start command help"""
