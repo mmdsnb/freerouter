@@ -141,24 +141,28 @@ class TestCLI:
     def test_init_command_already_exists(self, temp_config_dir, capsys):
         """Test init command when config already exists"""
         # Create config first time
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+        with patch('builtins.input', return_value='2'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         # Clear captured output
         capsys.readouterr()
 
-        # Try to create again
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+        # Try to create again - should ask location first, then ask to overwrite
+        # We need to provide two inputs: '2' for location, 'n' for overwrite
+        with patch('builtins.input', side_effect=['2', 'n']):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         captured = capsys.readouterr()
-        assert 'already exists' in captured.out or 'Initialized' in captured.out
+        assert 'already exists' in captured.out or 'Keeping existing' in captured.out
 
     def test_fetch_command(self, temp_config_dir, capsys):
         """Test fetch command"""
         # Create config first
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+        with patch('builtins.input', return_value='2'):
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         # Create a simple provider config
         providers_yaml = Path('config/providers.yaml')
@@ -209,48 +213,61 @@ model_list:
 
     def test_list_command_no_config(self, temp_config_dir, caplog):
         """Test list command without config file"""
-        with pytest.raises(SystemExit):
-            with patch('sys.argv', ['freerouter', 'list']):
-                main()
+        # Mock get_output_config_path to return non-existent path
+        fake_path = Path(temp_config_dir) / "nonexistent" / "config.yaml"
+
+        with patch('freerouter.cli.main.ConfigManager.get_output_config_path', return_value=fake_path):
+            with pytest.raises(SystemExit):
+                with patch('sys.argv', ['freerouter', 'list']):
+                    main()
 
         # Check in logs instead of stdout
         assert 'not found' in caplog.text or 'Config not found' in caplog.text
 
     def test_start_command_no_config(self, temp_config_dir, caplog):
         """Test start command without config file"""
-        with pytest.raises(SystemExit):
-            with patch('sys.argv', ['freerouter', 'start']):
-                main()
+        # Mock get_output_config_path to return non-existent path
+        fake_path = Path(temp_config_dir) / "nonexistent" / "config.yaml"
+
+        with patch('freerouter.cli.main.ConfigManager.get_output_config_path', return_value=fake_path):
+            with pytest.raises(SystemExit):
+                with patch('sys.argv', ['freerouter', 'start']):
+                    main()
 
         assert 'Config not found' in caplog.text
 
+    @patch('time.sleep')  # Mock sleep to avoid delays
     @patch('subprocess.Popen')
-    def test_start_command_creates_pid_file(self, mock_popen, temp_config_dir):
+    def test_start_command_creates_pid_file(self, mock_popen, mock_sleep, temp_config_dir):
         """Test start command creates PID file"""
         # Setup config
         config_dir = Path('config')
         config_dir.mkdir()
         (config_dir / 'config.yaml').write_text('model_list: []')
 
+        # Create log file with startup message
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text("INFO:     Uvicorn running on http://0.0.0.0:4000\n")
+
         # Mock process
         mock_process = MagicMock()
         mock_process.pid = 12345
-        mock_process.stdout = iter(["INFO:     Uvicorn running on http://0.0.0.0:4000\n"])
         mock_popen.return_value = mock_process
 
         # Run start
         with patch('sys.argv', ['freerouter', 'start']):
-            with patch('builtins.open', create=True) as mock_open:
-                try:
-                    main()
-                except StopIteration:
-                    pass  # Expected when mock iterator ends
+            main()
 
         # Verify Popen was called with correct params
         mock_popen.assert_called_once()
         call_args = mock_popen.call_args
         assert 'litellm' in call_args[0][0]
         assert call_args[1]['start_new_session'] is True
+
+        # Verify PID file was created
+        pid_file = config_dir / 'freerouter.pid'
+        assert pid_file.exists()
+        assert pid_file.read_text().strip() == '12345'
 
     def test_stop_command_no_service(self, temp_config_dir, caplog):
         """Test stop command when service is not running"""
@@ -273,14 +290,21 @@ model_list:
         pid_file = config_dir / 'freerouter.pid'
         pid_file.write_text('12345')
 
-        # Mock os.kill - first call succeeds (check), second kills, third fails (stopped)
-        mock_kill.side_effect = [None, None, OSError("Process not found")]
+        # Mock os.kill - simulate process stopping after SIGTERM
+        # Call sequence: check(0), kill(15), check(0) x N times, final check(0) raises
+        mock_kill.side_effect = [
+            None,  # Initial check: process exists
+            None,  # SIGTERM: kill signal sent
+            None,  # Loop check 1: still running
+            OSError("Process stopped"),  # Loop check 2: stopped
+            OSError("Process stopped")  # Final check: confirm stopped
+        ]
 
         with patch('sys.argv', ['freerouter', 'stop']):
             main()
 
-        # Verify kill was called
-        assert mock_kill.call_count >= 2
+        # Verify kill was called multiple times
+        assert mock_kill.call_count >= 3
         # PID file should be deleted
         assert not pid_file.exists()
 
@@ -353,8 +377,9 @@ class TestCLIIntegration:
 
     def test_init_and_check_files(self, temp_dir):
         """Test init creates proper file structure"""
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+        with patch('builtins.input', return_value='2'):  # Choose project-level config
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         assert Path('config').exists()
         assert Path('config/providers.yaml').exists()
@@ -371,8 +396,9 @@ class TestCLIIntegration:
 
     def test_init_creates_correct_structure(self, temp_dir):
         """Test init creates correct directory structure"""
-        with patch('sys.argv', ['freerouter', 'init']):
-            main()
+        with patch('builtins.input', return_value='2'):  # Choose project-level config
+            with patch('sys.argv', ['freerouter', 'init']):
+                main()
 
         config_dir = Path('config')
         assert config_dir.is_dir()
