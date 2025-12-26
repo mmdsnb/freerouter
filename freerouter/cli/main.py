@@ -765,6 +765,99 @@ def cmd_restore(args):
         sys.exit(1)
 
 
+def cmd_select(args):
+    """
+    Interactive model selector
+
+    Allows users to select which models to include in config.yaml,
+    reducing LiteLLM startup time and memory usage.
+    """
+    import yaml
+    import questionary
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+
+    # Check if config exists
+    if not output_config.exists():
+        logger.error(f"Config not found: {output_config}")
+        logger.info("Run 'freerouter fetch' first to generate config")
+        sys.exit(1)
+
+    # Load config
+    with open(output_config) as f:
+        config = yaml.safe_load(f)
+
+    models = config.get("model_list", [])
+
+    if not models:
+        logger.error("No models found in config")
+        sys.exit(1)
+
+    # Prepare choices for selection
+    choices = []
+    for model in models:
+        model_name = model.get("model_name", "")
+        litellm_model = model.get("litellm_params", {}).get("model", "")
+        provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
+
+        # Format: [provider] model_name
+        display_name = f"[{provider}] {model_name}"
+        choices.append({
+            "name": display_name,
+            "value": model_name
+        })
+
+    logger.info("=" * 60)
+    logger.info("FreeRouter - Model Selector")
+    logger.info("=" * 60)
+    logger.info(f"Total models: {len(models)}")
+    logger.info("")
+    logger.info("Select the models you want to use:")
+    logger.info("  • Use [Space] to select/deselect")
+    logger.info("  • Use [↑/↓] to navigate")
+    logger.info("  • Press [Enter] to confirm")
+    logger.info("=" * 60)
+
+    # Interactive multi-select
+    selected_models = questionary.checkbox(
+        "Select models to include:",
+        choices=choices,
+        instruction="Use [Space] to select, [Enter] to confirm"
+    ).ask()
+
+    if not selected_models:
+        logger.info("No models selected. Operation cancelled.")
+        sys.exit(0)
+
+    # Filter config to only include selected models
+    filtered_models = [
+        model for model in models
+        if model.get("model_name") in selected_models
+    ]
+
+    # Backup original config
+    backup_config(output_config)
+
+    # Write filtered config
+    config["model_list"] = filtered_models
+    with open(output_config, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    # Show summary
+    logger.info("=" * 60)
+    logger.info("✓ Model selection complete!")
+    logger.info("=" * 60)
+    logger.info(f"Selected: {len(selected_models)} models")
+    logger.info(f"Removed: {len(models) - len(selected_models)} models")
+    logger.info(f"Config: {output_config}")
+    logger.info("")
+    logger.info("To apply changes:")
+    logger.info("  • If service is running: freerouter reload")
+    logger.info("  • If service is stopped: freerouter start")
+    logger.info("=" * 60)
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -836,6 +929,13 @@ def main():
         help="Skip confirmation prompt"
     )
     parser_restore.set_defaults(func=cmd_restore)
+
+    # select command
+    parser_select = subparsers.add_parser(
+        "select",
+        help="Interactive model selector"
+    )
+    parser_select.set_defaults(func=cmd_select)
 
     # Parse arguments
     args = parser.parse_args()

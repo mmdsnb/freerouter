@@ -231,7 +231,7 @@ http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 \
 - MINOR: New features (backward compatible)
 - PATCH: Bug fixes (backward compatible)
 
-**Current**: v0.1.0 (initial development)
+**Current**: v0.1.1 (initial development)
 
 ---
 

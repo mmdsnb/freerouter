@@ -30,9 +30,11 @@
 
 ### 🔴 High Priority - Next Release (v0.2.0)
 
-#### 1. Interactive Model Selector ⭐⭐⭐⭐⭐
+#### 1. Interactive Model Selector ✅ ⭐⭐⭐⭐⭐
 
 **Command**: `freerouter select`
+
+**Status**: ✅ Completed (2025-12-26)
 
 **Problem**: Users get 50+ models after `fetch`, but typically only need 3-5 models.
 

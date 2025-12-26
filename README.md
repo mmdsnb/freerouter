@@ -149,6 +149,7 @@ freerouter restore <backup-file>  # Restore config from backup
 freerouter restore <backup-file> -y  # Restore without confirmation
 freerouter logs         # Show service logs in real-time
 freerouter list         # List configured models (grouped by provider)
+freerouter select       # Interactive model selector (filter config to selected models)
 freerouter --version    # Show version
 freerouter --help       # Show help
 ```

@@ -829,3 +829,142 @@ model_list:
         # Should have fewer lines than old format (was 1 line per model)
         assert len([l for l in lines if l.strip()]) < 20  # Much fewer than 3 models in old format
 
+
+class TestSelectCommand:
+    """Test select command"""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create temporary config directory"""
+        temp_dir = tempfile.mkdtemp()
+        config_dir = Path(temp_dir) / "config"
+        config_dir.mkdir()
+
+        original_dir = os.getcwd()
+        os.chdir(temp_dir)
+        yield config_dir
+        os.chdir(original_dir)
+        shutil.rmtree(temp_dir)
+
+    def test_select_command_no_config(self, temp_config_dir, caplog):
+        """Test select command without config file"""
+        with pytest.raises(SystemExit):
+            with patch('sys.argv', ['freerouter', 'select']):
+                main()
+
+        assert 'not found' in caplog.text
+
+    def test_select_command_empty_config(self, temp_config_dir, caplog):
+        """Test select command with empty config"""
+        config_file = temp_config_dir / "config.yaml"
+        config_file.write_text("model_list: []")
+
+        with pytest.raises(SystemExit):
+            with patch('sys.argv', ['freerouter', 'select']):
+                main()
+
+        assert 'No models found' in caplog.text
+
+    def test_select_command_filters_models(self, temp_config_dir):
+        """Test select command filters config to selected models"""
+        # Create config with multiple models
+        config_file = temp_config_dir / "config.yaml"
+        config_content = """
+litellm_settings:
+  drop_params: true
+  set_verbose: true
+model_list:
+  - model_name: model-1
+    litellm_params:
+      model: openai/model-1
+  - model_name: model-2
+    litellm_params:
+      model: openai/model-2
+  - model_name: model-3
+    litellm_params:
+      model: openai/model-3
+router_settings:
+  num_retries: 3
+"""
+        config_file.write_text(config_content)
+
+        # Mock questionary to select only model-1 and model-2
+        with patch('questionary.checkbox') as mock_checkbox:
+            mock_checkbox.return_value.ask.return_value = ['model-1', 'model-2']
+
+            with patch('sys.argv', ['freerouter', 'select']):
+                main()
+
+        # Verify config was filtered
+        updated_content = config_file.read_text()
+        assert 'model-1' in updated_content
+        assert 'model-2' in updated_content
+        assert 'model-3' not in updated_content
+
+        # Verify backup was created
+        backups = list(temp_config_dir.glob('config.yaml.backup.*'))
+        assert len(backups) > 0
+
+    def test_select_command_no_selection(self, temp_config_dir):
+        """Test select command when no models are selected"""
+        config_file = temp_config_dir / "config.yaml"
+        config_content = """
+model_list:
+  - model_name: model-1
+    litellm_params:
+      model: openai/model-1
+"""
+        config_file.write_text(config_content)
+
+        # Mock questionary to return empty selection
+        with patch('questionary.checkbox') as mock_checkbox:
+            mock_checkbox.return_value.ask.return_value = None
+
+            with pytest.raises(SystemExit):
+                with patch('sys.argv', ['freerouter', 'select']):
+                    main()
+
+        # Verify config was NOT changed
+        updated_content = config_file.read_text()
+        assert 'model-1' in updated_content
+
+    def test_select_command_preserves_settings(self, temp_config_dir):
+        """Test select command preserves litellm_settings and router_settings"""
+        config_file = temp_config_dir / "config.yaml"
+        config_content = """
+litellm_settings:
+  drop_params: true
+  set_verbose: true
+  custom_param: test
+model_list:
+  - model_name: model-1
+    litellm_params:
+      model: openai/model-1
+  - model_name: model-2
+    litellm_params:
+      model: openai/model-2
+router_settings:
+  num_retries: 3
+  timeout: 60
+"""
+        config_file.write_text(config_content)
+
+        # Select only model-1
+        with patch('questionary.checkbox') as mock_checkbox:
+            mock_checkbox.return_value.ask.return_value = ['model-1']
+
+            with patch('sys.argv', ['freerouter', 'select']):
+                main()
+
+        # Verify settings are preserved
+        import yaml
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+
+        assert config['litellm_settings']['drop_params'] is True
+        assert config['litellm_settings']['set_verbose'] is True
+        assert config['litellm_settings']['custom_param'] == 'test'
+        assert config['router_settings']['num_retries'] == 3
+        assert config['router_settings']['timeout'] == 60
+        assert len(config['model_list']) == 1
+

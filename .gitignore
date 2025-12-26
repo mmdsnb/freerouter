@@ -16,6 +16,11 @@ config/config.yaml
 config/providers.yaml
 *.log
 
+# Runtime files in config directory
+config/freerouter.pid
+config/freerouter.log
+config/config.yaml.backup.*
+
 # IDE
 .vscode/
 .idea/
