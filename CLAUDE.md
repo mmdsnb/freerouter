@@ -171,6 +171,30 @@ feat(providers): add HuggingFace provider
 Closes #42
 ```
 
+### Publishing a New Release
+
+**Use GitHub CLI** to create releases:
+
+```bash
+# Update version in code first
+# 1. freerouter/__version__.py
+# 2. pyproject.toml
+# 3. CHANGELOG.md
+
+# Commit and push
+git add .
+git commit -m "chore: bump version to X.Y.Z"
+git push origin master
+
+# Create GitHub Release (triggers automatic PyPI publish)
+http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 \
+  gh release create vX.Y.Z \
+  --title "Release vX.Y.Z" \
+  --notes "Release notes here..."
+```
+
+**What happens**: GitHub Actions (`.github/workflows/publish.yml`) automatically builds and publishes to PyPI using OIDC trusted publishing.
+
 ---
 
 ## Security & Performance
