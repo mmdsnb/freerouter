@@ -35,7 +35,10 @@
       "Bash(wc:*)",
       "Bash(uv run:*)",
       "Bash(timeout 15 uv run:*)",
-      "Bash(timeout 3 uv run:*)"
+      "Bash(timeout 3 uv run:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(litellm-proxy:*)"
     ]
   }
 }

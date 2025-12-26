@@ -112,6 +112,13 @@ def cmd_start(args):
         logger.info("Run 'freerouter fetch' first to generate config")
         sys.exit(1)
 
+    # IMPORTANT: Remove CONFIG_FILE_PATH env var if exists
+    # LiteLLM prioritizes env var over --config flag, which causes confusion
+    if 'CONFIG_FILE_PATH' in os.environ:
+        logger.warning(f"Removing CONFIG_FILE_PATH env var (was: {os.environ['CONFIG_FILE_PATH']})")
+        logger.warning(f"Using freerouter config instead: {output_config}")
+        del os.environ['CONFIG_FILE_PATH']
+
     # Log file path
     log_dir = output_config.parent
     log_file = log_dir / "freerouter.log"
