@@ -33,15 +33,34 @@ logger = logging.getLogger(__name__)
 
 
 def cmd_init(args):
-    """Initialize configuration"""
+    """Initialize configuration (interactive)"""
     config_mgr = ConfigManager()
-    config_dir = config_mgr.init_config()
 
-    print(f"✓ Initialized FreeRouter configuration at: {config_dir}")
+    # Interactive prompts
+    print("=" * 60)
+    print("FreeRouter Configuration Initialization")
+    print("=" * 60)
+    print("\nChoose configuration file location:")
+    print("1. ~/.config/freerouter/providers.yaml (Recommended, user-level)")
+    print("2. ./config/providers.yaml (Current directory, project-level)")
+
+    while True:
+        choice = input("\nEnter your choice [1/2] (default: 1): ").strip() or "1"
+        if choice in ["1", "2"]:
+            break
+        print("Invalid option. Please enter 1 or 2")
+
+    use_user_config = (choice == "1")
+    config_dir = config_mgr.init_config(interactive=True, use_user_config=use_user_config)
+
+    print(f"\n✓ Configuration initialized: {config_dir / 'providers.yaml'}")
+    print(f"✓ All providers are disabled by default (enabled: false)")
     print(f"\nNext steps:")
-    print(f"1. Edit {config_dir}/providers.yaml to configure your providers")
-    print(f"2. Run 'freerouter fetch' to fetch models")
-    print(f"3. Run 'freerouter start' to start the service")
+    print(f"1. Edit {config_dir / 'providers.yaml'} to configure your providers")
+    print(f"2. Set enabled: true for the providers you want to use")
+    print(f"3. Run 'freerouter fetch' to fetch model list")
+    print(f"4. Run 'freerouter start' to start the service")
+    print("=" * 60)
 
 
 def cmd_fetch(args):

@@ -3,6 +3,7 @@ Configuration file discovery and management
 """
 
 import os
+import yaml
 from pathlib import Path
 from typing import Optional
 
@@ -65,27 +66,74 @@ class ConfigManager:
         user_config.mkdir(parents=True, exist_ok=True)
         return user_config
 
-    def init_config(self) -> Path:
+    def _disable_all_providers(self, config_dict: dict) -> dict:
+        """
+        将配置中所有 provider 的 enabled 设置为 false
+
+        Args:
+            config_dict: 从 YAML 读取的配置字典
+
+        Returns:
+            修改后的配置字典
+        """
+        if "providers" in config_dict:
+            for provider in config_dict["providers"]:
+                provider["enabled"] = False
+        return config_dict
+
+    def init_config(self, interactive: bool = False, use_user_config: bool = True) -> Path:
         """
         Initialize config directory with example
+
+        Args:
+            interactive: 是否为交互式模式
+            use_user_config: True 使用 ~/.config/freerouter, False 使用 ./config
 
         Returns:
             Path to created config directory
         """
-        # Check if already exists in current directory
-        local_config = Path.cwd() / "config"
-        if local_config.exists():
-            return local_config
+        # 确定目标目录
+        if use_user_config:
+            target_dir = Path.home() / ".config" / "freerouter"
+        else:
+            target_dir = Path.cwd() / "config"
 
-        # Create in current directory
-        local_config.mkdir(exist_ok=True)
+        # 创建目录
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy example if available
+        # 目标配置文件
+        target_file = target_dir / "providers.yaml"
+
+        # Ask if overwrite when file exists
+        if target_file.exists() and interactive:
+            overwrite = input(f"\nConfiguration file already exists: {target_file}\nOverwrite? [y/N]: ").strip().lower()
+            if overwrite != "y":
+                print("Keeping existing configuration")
+                return target_dir
+
+        # 读取示例文件
         example_file = Path(__file__).parent.parent.parent / "examples" / "providers.yaml.example"
-        target_file = local_config / "providers.yaml"
 
-        if example_file.exists() and not target_file.exists():
-            import shutil
-            shutil.copy(example_file, target_file)
+        if example_file.exists():
+            # 读取示例文件内容
+            with open(example_file, "r", encoding="utf-8") as f:
+                config_data = yaml.safe_load(f)
 
-        return local_config
+            # 将所有 provider 的 enabled 设置为 false
+            config_data = self._disable_all_providers(config_data)
+
+            # 写入目标文件
+            with open(target_file, "w", encoding="utf-8") as f:
+                # 保留注释的方式：直接读取原始文本并替换
+                with open(example_file, "r", encoding="utf-8") as ef:
+                    content = ef.read()
+                    # 将所有 "enabled: true" 替换为 "enabled: false"
+                    content = content.replace("enabled: true", "enabled: false")
+                f.write(content)
+        else:
+            # 如果示例文件不存在，创建一个空配置
+            empty_config = {"providers": []}
+            with open(target_file, "w", encoding="utf-8") as f:
+                yaml.dump(empty_config, f)
+
+        return target_dir

@@ -1,8 +1,40 @@
-# FreeRouter - 项目规范和设计文档
+# FreeRouter - Project Standards and Design Document
 
-> **重要**: 本文档记录项目的设计原则、架构决策和代码规范。任何修改必须遵循此文档。
+> **CRITICAL**: This document records project design principles, architectural decisions, and code standards. All modifications MUST follow this document. This document is shared by all Claude Code instances working on this project to maintain consistency.
 
-## 核心设计原则
+## Collaboration Guidelines for Claude Code
+
+### Git Workflow
+1. **Automatic Commits**: Create commits automatically when you complete meaningful work (feature additions, bug fixes, refactoring)
+   - Use descriptive commit messages following the format: `<type>(<scope>): <subject>`
+   - Examples: `feat(cli): add interactive init command`, `fix(config): handle missing file error`
+
+2. **Push Policy**:
+   - **NEVER push automatically** - only push when user explicitly requests it
+   - User will say "push" or "git push" when they want to publish changes
+
+3. **Code Quality**:
+   - **Continuously review code for refactoring opportunities**
+   - Prevent "spaghetti code" from accumulating
+   - When you see code smells (duplication, complexity, unclear naming), proactively suggest or implement improvements
+   - Balance refactoring with feature development - don't over-engineer
+
+4. **Documentation Sync**:
+   - Update CLAUDE.md whenever you make architectural decisions or add new patterns
+   - Keep it as the source of truth for all Claude Code instances
+   - Document "why" decisions were made, not just "what" was done
+
+### Code Review Checklist (Self-Review Before Commit)
+- [ ] Code follows KISS and Occam's Razor principles
+- [ ] No code duplication (DRY principle)
+- [ ] Functions/classes have single responsibility
+- [ ] Clear, descriptive naming (no abbreviations unless standard)
+- [ ] Error handling is appropriate
+- [ ] No hardcoded values (use config/env vars)
+- [ ] Internationalization (English for user-facing messages)
+- [ ] Comments only where logic is non-obvious
+
+## Core Design Principles
 
 ### 1. KISS (Keep It Simple, Stupid)
 - 代码简洁明了，避免过度设计
@@ -64,8 +96,8 @@ freerouter/                          # 项目根目录
 ├── .env.example                 # 环境变量示例
 ├── .gitignore                   # Git 忽略规则
 ├── LICENSE                      # 许可证
-├── README.md                    # 项目说明（中文）
-├── README_EN.md                 # 项目说明（英文）
+├── README.md                    # 项目说明（英文）
+├── README_ZH.md                 # 项目说明（中文）
 ├── CONTRIBUTING.md              # 贡献指南
 ├── CHANGELOG.md                 # 变更日志
 ├── CLAUDE.md                    # 本文档
