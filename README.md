@@ -6,8 +6,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-[中文文档](README_ZH.md) | English
-
 ## What is this?
 
 FreeRouter is a **configuration management tool** for [LiteLLM](https://github.com/BerriAI/litellm).
