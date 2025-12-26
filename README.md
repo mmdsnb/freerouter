@@ -140,7 +140,9 @@ curl http://localhost:4000/v1/chat/completions \
 freerouter              # Start service (default, auto fetch + start)
 freerouter init         # Initialize config directory
 freerouter fetch        # Fetch model list and generate config
-freerouter start        # Start LiteLLM service
+freerouter start        # Start LiteLLM service (daemon mode)
+freerouter stop         # Stop LiteLLM service
+freerouter logs         # Show service logs in real-time
 freerouter list         # List configured models
 freerouter --version    # Show version
 freerouter --help       # Show help
