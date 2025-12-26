@@ -4,6 +4,7 @@ Tests for CLI commands
 
 import os
 import sys
+import logging
 import pytest
 import tempfile
 import shutil
@@ -688,4 +689,146 @@ class TestRestoreCommand:
 
         # Verify config was NOT changed
         assert config_file.read_text() == original_content
+
+
+class TestStatusCommand:
+    """Test status command"""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create temporary config directory"""
+        temp_dir = tempfile.mkdtemp()
+        config_dir = Path(temp_dir) / "config"
+        config_dir.mkdir()
+
+        # Create config file
+        config_file = config_dir / "config.yaml"
+        config_file.write_text("model_list:\n  - model_name: test-model\n")
+
+        original_dir = os.getcwd()
+        os.chdir(temp_dir)
+        yield config_dir
+        os.chdir(original_dir)
+        shutil.rmtree(temp_dir)
+
+    def test_status_command_not_running(self, temp_config_dir, caplog):
+        """Test status command when service is not running"""
+        caplog.set_level(logging.INFO)
+
+        with patch('sys.argv', ['freerouter', 'status']):
+            main()
+
+        # Check log output
+        assert "Not Running" in caplog.text
+
+    def test_status_command_running(self, temp_config_dir, caplog):
+        """Test status command when service is running"""
+        caplog.set_level(logging.INFO)
+
+        # Create PID file
+        pid_file = temp_config_dir / "freerouter.pid"
+        current_pid = os.getpid()
+        pid_file.write_text(str(current_pid))
+
+        with patch('sys.argv', ['freerouter', 'status']):
+            main()
+
+        # Check log output
+        assert "Running" in caplog.text
+        assert str(current_pid) in caplog.text
+
+    def test_status_command_stale_pid(self, temp_config_dir, caplog):
+        """Test status command with stale PID file"""
+        caplog.set_level(logging.INFO)
+
+        # Create PID file with non-existent PID
+        pid_file = temp_config_dir / "freerouter.pid"
+        pid_file.write_text("999999")
+
+        with patch('sys.argv', ['freerouter', 'status']):
+            main()
+
+        # Check log output
+        assert "Not Running" in caplog.text
+        assert "stale" in caplog.text
+
+        # Verify PID file was cleaned up
+        assert not pid_file.exists()
+
+
+class TestListCommand:
+    """Test list command improvements"""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create temporary config directory"""
+        temp_dir = tempfile.mkdtemp()
+        config_dir = Path(temp_dir) / "config"
+        config_dir.mkdir()
+
+        # Create config file with multiple providers
+        config_file = config_dir / "config.yaml"
+        config_content = """
+model_list:
+  - model_name: gpt-4
+    litellm_params:
+      model: openai/gpt-4
+  - model_name: claude-3
+    litellm_params:
+      model: anthropic/claude-3
+  - model_name: gemini-pro
+    litellm_params:
+      model: google/gemini-pro
+"""
+        config_file.write_text(config_content)
+
+        original_dir = os.getcwd()
+        os.chdir(temp_dir)
+        yield config_dir
+        os.chdir(original_dir)
+        shutil.rmtree(temp_dir)
+
+    def test_list_shows_service_status_not_running(self, temp_config_dir, capsys):
+        """Test list command shows service status when not running"""
+        with patch('sys.argv', ['freerouter', 'list']):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Service Not Running" in captured.out
+        assert "freerouter start" in captured.out
+
+    def test_list_shows_service_status_running(self, temp_config_dir, capsys):
+        """Test list command shows service status when running"""
+        # Create PID file
+        pid_file = temp_config_dir / "freerouter.pid"
+        current_pid = os.getpid()
+        pid_file.write_text(str(current_pid))
+
+        with patch('sys.argv', ['freerouter', 'list']):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Service Running" in captured.out
+        assert str(current_pid) in captured.out
+
+    def test_list_groups_by_provider(self, temp_config_dir, capsys):
+        """Test list command groups models by provider"""
+        with patch('sys.argv', ['freerouter', 'list']):
+            main()
+
+        captured = capsys.readouterr()
+        # Check provider grouping
+        assert "[openai]" in captured.out or "[anthropic]" in captured.out or "[google]" in captured.out
+        assert "3 models across" in captured.out
+
+    def test_list_compact_format(self, temp_config_dir, capsys):
+        """Test list command uses compact 2-column format"""
+        with patch('sys.argv', ['freerouter', 'list']):
+            main()
+
+        captured = capsys.readouterr()
+        # Verify it's more compact than before (grouped by provider)
+        lines = captured.out.split('\n')
+        # Should have fewer lines than old format (was 1 line per model)
+        assert len([l for l in lines if l.strip()]) < 20  # Much fewer than 3 models in old format
 

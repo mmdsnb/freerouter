@@ -142,12 +142,13 @@ freerouter init         # Initialize config directory
 freerouter fetch        # Fetch model list and generate config
 freerouter start        # Start LiteLLM service (daemon mode)
 freerouter stop         # Stop LiteLLM service
+freerouter status       # Show service status (PID, URL, uptime, models)
 freerouter reload       # Reload service (restart)
 freerouter reload -r    # Reload with refresh (backup + fetch + restart)
 freerouter restore <backup-file>  # Restore config from backup
 freerouter restore <backup-file> -y  # Restore without confirmation
 freerouter logs         # Show service logs in real-time
-freerouter list         # List configured models
+freerouter list         # List configured models (grouped by provider)
 freerouter --version    # Show version
 freerouter --help       # Show help
 ```

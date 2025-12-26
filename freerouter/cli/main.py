@@ -241,6 +241,7 @@ def cmd_start(args):
 
 def cmd_list(args):
     """List available models"""
+    import os
     import yaml
 
     config_mgr = ConfigManager()
@@ -251,6 +252,23 @@ def cmd_list(args):
         logger.info("Run 'freerouter fetch' first to generate config")
         sys.exit(1)
 
+    # Show service status
+    if is_service_running():
+        log_dir = output_config.parent
+        pid_file = log_dir / "freerouter.pid"
+        with open(pid_file) as f:
+            pid = f.read().strip()
+
+        port = os.getenv("LITELLM_PORT", "4000")
+        host = os.getenv("LITELLM_HOST", "0.0.0.0")
+        url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
+
+        print(f"\n● Service Running (PID: {pid}, {url})")
+    else:
+        print(f"\n○ Service Not Running (start with: freerouter start)")
+
+    print("=" * 60)
+
     with open(output_config) as f:
         config = yaml.safe_load(f)
 
@@ -260,17 +278,29 @@ def cmd_list(args):
         print("No models configured.")
         return
 
-    print(f"\n{'Model Name':<40} {'Provider':<20}")
-    print("=" * 60)
+    # Group models by provider for better readability
+    from collections import defaultdict
+    providers_models = defaultdict(list)
 
     for model in models:
         model_name = model.get("model_name", "")
         litellm_model = model.get("litellm_params", {}).get("model", "")
         provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
+        providers_models[provider].append(model_name)
 
-        print(f"{model_name:<40} {provider:<20}")
+    # Print models grouped by provider in compact format
+    for provider in sorted(providers_models.keys()):
+        models_list = providers_models[provider]
+        print(f"\n[{provider}] ({len(models_list)} models)")
 
-    print(f"\nTotal: {len(models)} models")
+        # Print in 2 columns for compact display
+        for i in range(0, len(models_list), 2):
+            left = models_list[i]
+            right = models_list[i + 1] if i + 1 < len(models_list) else ""
+            print(f"  {left:<50} {right}")
+
+    print(f"\n{'=' * 60}")
+    print(f"Total: {len(models)} models across {len(providers_models)} providers")
 
 
 def cmd_stop(args):
@@ -391,6 +421,96 @@ def cmd_logs(args):
         logger.info("Stopped viewing logs")
     except Exception as e:
         logger.error(f"Error reading logs: {e}")
+
+
+def cmd_status(args):
+    """Show FreeRouter service status"""
+    import os
+    import time
+    import datetime
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+    log_dir = output_config.parent
+    pid_file = log_dir / "freerouter.pid"
+    log_file = log_dir / "freerouter.log"
+
+    logger.info("=" * 60)
+    logger.info("FreeRouter Service Status")
+    logger.info("=" * 60)
+
+    # Check if service is running
+    if not pid_file.exists():
+        logger.info("Status: ○ Not Running")
+        logger.info("\nStart service with: freerouter start")
+        logger.info("=" * 60)
+        return
+
+    try:
+        with open(pid_file) as f:
+            pid = int(f.read().strip())
+
+        # Check if process is running
+        os.kill(pid, 0)
+
+        # Service is running
+        logger.info("Status: ● Running")
+        logger.info(f"PID: {pid}")
+
+        # Get service URL
+        port = os.getenv("LITELLM_PORT", "4000")
+        host = os.getenv("LITELLM_HOST", "0.0.0.0")
+        url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
+        logger.info(f"URL: {url}")
+
+        # Config file
+        logger.info(f"Config: {output_config}")
+
+        # Calculate uptime from PID file creation time
+        if pid_file.exists():
+            start_time = pid_file.stat().st_mtime
+            uptime_seconds = time.time() - start_time
+            uptime_str = format_uptime(uptime_seconds)
+            logger.info(f"Uptime: {uptime_str}")
+
+        # Count models
+        if output_config.exists():
+            import yaml
+            with open(output_config) as f:
+                config = yaml.safe_load(f)
+            model_count = len(config.get("model_list", []))
+            logger.info(f"Models: {model_count} configured")
+
+        # Log file
+        if log_file.exists():
+            log_size = log_file.stat().st_size / 1024  # KB
+            logger.info(f"Log: {log_file} ({log_size:.1f} KB)")
+
+    except (OSError, ValueError):
+        # Process not running, but PID file exists (stale)
+        logger.info("Status: ○ Not Running (stale PID file)")
+        logger.info(f"PID: {pid} (not found)")
+        logger.info("\nClean up and start: freerouter start")
+        pid_file.unlink()
+
+    logger.info("=" * 60)
+
+
+def format_uptime(seconds):
+    """Format uptime in human readable format"""
+    if seconds < 60:
+        return f"{int(seconds)} seconds"
+    elif seconds < 3600:
+        minutes = int(seconds / 60)
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    elif seconds < 86400:
+        hours = int(seconds / 3600)
+        minutes = int((seconds % 3600) / 60)
+        return f"{hours} hour{'s' if hours != 1 else ''} {minutes} minute{'s' if minutes != 1 else ''}"
+    else:
+        days = int(seconds / 86400)
+        hours = int((seconds % 86400) / 3600)
+        return f"{days} day{'s' if days != 1 else ''} {hours} hour{'s' if hours != 1 else ''}"
 
 
 def backup_config(config_path: Path):
@@ -637,6 +757,10 @@ def main():
     # logs command
     parser_logs = subparsers.add_parser("logs", help="Show service logs")
     parser_logs.set_defaults(func=cmd_logs)
+
+    # status command
+    parser_status = subparsers.add_parser("status", help="Show service status")
+    parser_status.set_defaults(func=cmd_status)
 
     # reload command
     parser_reload = subparsers.add_parser(
