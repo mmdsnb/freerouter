@@ -393,6 +393,128 @@ def cmd_logs(args):
         logger.error(f"Error reading logs: {e}")
 
 
+def backup_config(config_path: Path):
+    """
+    Backup configuration file with timestamp
+
+    Args:
+        config_path: Path to config file to backup
+    """
+    import datetime
+    import shutil
+
+    if not config_path.exists():
+        return
+
+    # Create backup with timestamp
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = config_path.parent / f"{config_path.name}.backup.{timestamp}"
+
+    shutil.copy2(config_path, backup_path)
+    logger.info(f"✓ Backup created: {backup_path.name}")
+
+    # Cleanup old backups (keep only 5 most recent)
+    cleanup_old_backups(config_path, keep=5)
+
+
+def cleanup_old_backups(config_path: Path, keep: int = 5):
+    """
+    Remove old backup files, keeping only the most recent ones
+
+    Args:
+        config_path: Path to config file
+        keep: Number of backups to keep
+    """
+    backup_pattern = f"{config_path.name}.backup.*"
+    backup_files = sorted(
+        config_path.parent.glob(backup_pattern),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    # Remove old backups
+    for old_backup in backup_files[keep:]:
+        try:
+            old_backup.unlink()
+            logger.debug(f"Removed old backup: {old_backup.name}")
+        except Exception as e:
+            logger.warning(f"Failed to remove old backup {old_backup.name}: {e}")
+
+
+def is_service_running() -> bool:
+    """
+    Check if FreeRouter service is currently running
+
+    Returns:
+        True if service is running, False otherwise
+    """
+    import os
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+    log_dir = output_config.parent
+    pid_file = log_dir / "freerouter.pid"
+
+    if not pid_file.exists():
+        return False
+
+    try:
+        with open(pid_file) as f:
+            pid = int(f.read().strip())
+
+        # Check if process is running
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def cmd_reload(args):
+    """
+    Reload FreeRouter service
+
+    Two modes:
+    - Normal: stop + start (restart service with existing config)
+    - Refresh (-r): fetch + stop + start (refresh config from providers)
+    """
+    import time
+
+    config_mgr = ConfigManager()
+    output_config = config_mgr.get_output_config_path()
+
+    logger.info("=" * 60)
+    logger.info("Reloading FreeRouter Service")
+    logger.info("=" * 60)
+
+    # 1. If --refresh, backup and regenerate config
+    if args.refresh:
+        logger.info("Refreshing configuration from providers...")
+
+        # Backup existing config
+        if output_config.exists():
+            backup_config(output_config)
+
+        # Regenerate config
+        cmd_fetch(args)
+        logger.info("✓ Configuration refreshed")
+
+    # 2. Stop service if running
+    if is_service_running():
+        logger.info("Stopping service...")
+        cmd_stop(args)
+        time.sleep(1)  # Wait for clean shutdown
+    else:
+        logger.info("Service is not running")
+
+    # 3. Start service
+    logger.info("Starting service...")
+    cmd_start(args)
+
+    logger.info("=" * 60)
+    logger.info("✓ Service reloaded successfully")
+    logger.info("=" * 60)
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -432,6 +554,18 @@ def main():
     # logs command
     parser_logs = subparsers.add_parser("logs", help="Show service logs")
     parser_logs.set_defaults(func=cmd_logs)
+
+    # reload command
+    parser_reload = subparsers.add_parser(
+        "reload",
+        help="Reload service (restart or refresh config)"
+    )
+    parser_reload.add_argument(
+        "-r", "--refresh",
+        action="store_true",
+        help="Refresh configuration from providers before reloading"
+    )
+    parser_reload.set_defaults(func=cmd_reload)
 
     # Parse arguments
     args = parser.parse_args()

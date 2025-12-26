@@ -142,6 +142,8 @@ freerouter init         # Initialize config directory
 freerouter fetch        # Fetch model list and generate config
 freerouter start        # Start LiteLLM service (daemon mode)
 freerouter stop         # Stop LiteLLM service
+freerouter reload       # Reload service (restart)
+freerouter reload -r    # Reload with refresh (backup + fetch + restart)
 freerouter logs         # Show service logs in real-time
 freerouter list         # List configured models
 freerouter --version    # Show version

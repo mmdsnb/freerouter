@@ -408,3 +408,166 @@ class TestCLIIntegration:
 
         # Check file permissions (should be readable)
         assert os.access(providers_yaml, os.R_OK)
+
+
+class TestReloadCommand:
+    """Test reload command"""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create temporary config directory"""
+        temp_dir = tempfile.mkdtemp()
+        original_dir = os.getcwd()
+        os.chdir(temp_dir)
+        yield temp_dir
+        os.chdir(original_dir)
+        shutil.rmtree(temp_dir)
+
+    @patch('time.sleep')
+    @patch('subprocess.Popen')
+    def test_reload_without_refresh(self, mock_popen, mock_sleep, temp_config_dir):
+        """Test reload command without refresh (simple restart)"""
+        # Setup config
+        config_dir = Path('config')
+        config_dir.mkdir()
+        config_file = config_dir / 'config.yaml'
+        config_file.write_text('model_list: []')
+
+        # Create log file with startup message
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text("INFO:     Uvicorn running on http://0.0.0.0:4000\n")
+
+        # Mock process
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_popen.return_value = mock_process
+
+        # Run reload (service not running, should just start)
+        with patch('sys.argv', ['freerouter', 'reload']):
+            main()
+
+        # Verify start was called
+        assert mock_popen.called
+
+    @patch('time.sleep')
+    @patch('subprocess.Popen')
+    def test_reload_with_refresh(self, mock_popen, mock_sleep, temp_config_dir):
+        """Test reload command with --refresh (backup + fetch + restart)"""
+        # Setup config
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        # Create providers.yaml
+        providers_file = config_dir / 'providers.yaml'
+        providers_file.write_text("""
+providers:
+  - type: static
+    enabled: true
+    model_name: test-model
+    provider: openai
+    api_base: http://test.com
+    api_key: test
+""")
+
+        # Create existing config.yaml
+        config_file = config_dir / 'config.yaml'
+        config_file.write_text('model_list: [old-model]')
+
+        # Create log file
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text("INFO:     Uvicorn running on http://0.0.0.0:4000\n")
+
+        # Mock process
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_popen.return_value = mock_process
+
+        # Run reload with refresh
+        with patch('sys.argv', ['freerouter', 'reload', '--refresh']):
+            main()
+
+        # Check backup was created
+        backups = list(config_dir.glob('config.yaml.backup.*'))
+        assert len(backups) > 0
+
+        # Verify new config was generated
+        assert config_file.exists()
+
+    @patch('time.sleep')
+    @patch('os.kill')
+    @patch('subprocess.Popen')
+    def test_reload_with_running_service(self, mock_popen, mock_kill, mock_sleep, temp_config_dir):
+        """Test reload command when service is already running"""
+        # Setup config
+        config_dir = Path('config')
+        config_dir.mkdir()
+        config_file = config_dir / 'config.yaml'
+        config_file.write_text('model_list: []')
+
+        # Create PID file (service running)
+        pid_file = config_dir / 'freerouter.pid'
+        pid_file.write_text('12345')
+
+        # Create log file
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text("INFO:     Uvicorn running on http://0.0.0.0:4000\n")
+
+        # Mock os.kill for is_service_running check and stop command
+        mock_kill.side_effect = [
+            None,  # is_service_running check
+            None,  # stop: initial check
+            None,  # stop: SIGTERM
+            None,  # stop: loop check
+            OSError("Process stopped"),  # stop: stopped
+            OSError("Process stopped")  # stop: final check
+        ]
+
+        # Mock process
+        mock_process = MagicMock()
+        mock_process.pid = 12345
+        mock_popen.return_value = mock_process
+
+        # Run reload
+        with patch('sys.argv', ['freerouter', 'reload']):
+            main()
+
+        # Verify stop and start were called
+        assert mock_kill.call_count >= 2  # At least check + kill
+        assert mock_popen.called
+
+    def test_reload_short_option(self, temp_config_dir, capsys):
+        """Test reload -r short option works"""
+        # Setup minimal config
+        config_dir = Path('config')
+        config_dir.mkdir()
+
+        providers_file = config_dir / 'providers.yaml'
+        providers_file.write_text("""
+providers:
+  - type: static
+    enabled: true
+    model_name: test
+    provider: openai
+    api_base: http://test.com
+    api_key: test
+""")
+
+        # Create existing config.yaml (to be backed up)
+        config_file = config_dir / 'config.yaml'
+        config_file.write_text('model_list: [old-model]')
+
+        log_file = config_dir / 'freerouter.log'
+        log_file.write_text("INFO:     Uvicorn running on http://0.0.0.0:4000\n")
+
+        with patch('time.sleep'):
+            with patch('subprocess.Popen') as mock_popen:
+                mock_process = MagicMock()
+                mock_process.pid = 12345
+                mock_popen.return_value = mock_process
+
+                with patch('sys.argv', ['freerouter', 'reload', '-r']):
+                    main()
+
+        # Check backup was created
+        backups = list(config_dir.glob('config.yaml.backup.*'))
+        assert len(backups) > 0
