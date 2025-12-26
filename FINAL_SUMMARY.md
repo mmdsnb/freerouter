@@ -88,7 +88,6 @@ freerouter/
 │       ├── ollama.py       # Ollama
 │       ├── modelscope.py   # ModelScope
 │       └── static.py       # 静态配置
-├── scripts/                 # 辅助脚本 (向后兼容)
 ├── tests/                   # 单元测试
 ├── config/                  # 本地配置
 ├── examples/                # 配置示例

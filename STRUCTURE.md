@@ -16,10 +16,6 @@ freerouter/
 │       ├── ollama.py                 # Ollama Provider
 │       ├── modelscope.py             # ModelScope Provider
 │       └── static.py                 # Static Provider
-├── scripts/                          # 可执行脚本
-│   ├── fetch.py                      # 获取模型并生成配置
-│   ├── start.py                      # 启动 litellm 服务
-│   └── update.sh                     # 更新并重启服务
 ├── tests/                            # 测试代码
 │   ├── __init__.py
 │   ├── test_providers.py             # Provider 单元测试
@@ -61,9 +57,6 @@ freerouter/
 - `base.py`: 抽象基类，定义 Provider 接口
 - 其他文件: 具体 Provider 实现
 
-### `/scripts` - 可执行脚本
-用户直接运行的脚本，不是包的一部分。
-
 ### `/tests` - 测试代码
 单元测试和集成测试。
 
@@ -80,7 +73,6 @@ freerouter/
 
 1. **关注点分离**
    - `freerouter/`: 库代码
-   - `scripts/`: 可执行文件
    - `tests/`: 测试代码
    - `config/`: 用户数据
 

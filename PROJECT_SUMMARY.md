@@ -64,7 +64,6 @@ freerouter/
 │       ├── ollama.py
 │       ├── modelscope.py
 │       └── static.py
-├── scripts/                 # 辅助脚本 (可选)
 ├── tests/                   # 单元测试
 ├── config/                  # 本地配置
 ├── examples/                # 配置示例

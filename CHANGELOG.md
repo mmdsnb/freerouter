@@ -24,5 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Design
 - KISS principle implementation
 - Occam's Razor approach
-- Clean project structure (freerouter/, scripts/, tests/)
+- Clean project structure (freerouter/, tests/)
 - Comprehensive documentation in CLAUDE.md

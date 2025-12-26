@@ -48,7 +48,7 @@ __version__ = "0.1.0"  # 更新版本号
 
 ```bash
 # 确保所有测试通过
-python scripts/test.py
+pytest --cov=freerouter
 
 # 或
 pytest
@@ -110,7 +110,7 @@ git push origin v0.1.0
 
 ```bash
 #!/bin/bash
-# scripts/publish.sh
+# publish.sh - PyPI publishing script
 
 set -e
 
@@ -124,7 +124,7 @@ fi
 
 # 2. 运行测试
 echo "运行测试..."
-python scripts/test.py
+pytest --cov=freerouter
 
 # 3. 清理旧构建
 echo "清理旧构建..."
