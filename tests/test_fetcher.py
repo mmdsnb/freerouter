@@ -80,7 +80,9 @@ class TestFreeRouterFetcher:
             assert "model_list" in config
             assert len(config["model_list"]) == 1
             assert "litellm_settings" in config
-            assert "router_settings" in config
+            # router_settings removed to fix /v1/models endpoint
+            assert "router_settings" not in config
+            assert "general_settings" not in config
 
     def test_parallel_fetch(self):
         """Test that providers are fetched in parallel"""

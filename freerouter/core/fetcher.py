@@ -124,12 +124,12 @@ class FreeRouterFetcher:
             "model_list": services,
             "litellm_settings": {
                 "drop_params": True,
-                "set_verbose": True
-            },
-            "router_settings": {
-                "routing_strategy": "simple-shuffle",
-                "num_retries": 3,
-                "timeout": 60
+                "set_verbose": True,
+                "request_timeout": 60,
+                "telemetry": False,  # Disable LiteLLM telemetry
+                # Log raw HTTP requests/responses (curl commands + raw responses)
+                # Set to True to see actual requests sent to providers
+                "log_raw_request_response": os.getenv("FREEROUTER_LOG_RAW", "false").lower() == "true"
             }
         }
 

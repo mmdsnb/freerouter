@@ -226,16 +226,18 @@ model_list:
         assert 'not found' in caplog.text or 'Config not found' in caplog.text
 
     def test_start_command_no_config(self, temp_config_dir, caplog):
-        """Test start command without config file"""
-        # Mock get_output_config_path to return non-existent path
-        fake_path = Path(temp_config_dir) / "nonexistent" / "config.yaml"
+        """Test start command without config file and no provider config"""
+        # Mock both config paths to return non-existent paths
+        fake_output_path = Path(temp_config_dir) / "nonexistent" / "config.yaml"
 
-        with patch('freerouter.cli.main.ConfigManager.get_output_config_path', return_value=fake_path):
-            with pytest.raises(SystemExit):
-                with patch('sys.argv', ['freerouter', 'start']):
-                    main()
+        with patch('freerouter.cli.main.ConfigManager.get_output_config_path', return_value=fake_output_path):
+            with patch('freerouter.cli.main.ConfigManager.find_provider_config', return_value=None):
+                with pytest.raises(SystemExit):
+                    with patch('sys.argv', ['freerouter', 'start']):
+                        main()
 
-        assert 'Config not found' in caplog.text
+        # Should complain about missing providers.yaml (not config.yaml)
+        assert 'providers.yaml' in caplog.text.lower()
 
     @patch('time.sleep')  # Mock sleep to avoid delays
     @patch('subprocess.Popen')

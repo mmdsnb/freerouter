@@ -13,6 +13,7 @@ Usage:
 """
 
 import sys
+import os
 import argparse
 import logging
 from pathlib import Path
@@ -63,6 +64,29 @@ def cmd_init(args):
     print("=" * 60)
 
 
+def _setup_debug_env(debug_enabled: bool) -> None:
+    """
+    Setup or clear debug environment variables
+
+    Args:
+        debug_enabled: Whether debug mode is enabled
+    """
+    if debug_enabled:
+        # Save and show override if needed
+        original_log = os.environ.get('LITELLM_LOG')
+        if original_log and original_log != 'DEBUG':
+            logger.info(f"Note: Overriding LITELLM_LOG={original_log} → DEBUG")
+
+        # Set debug env vars
+        os.environ['LITELLM_LOG'] = 'DEBUG'
+        os.environ['FREEROUTER_LOG_RAW'] = 'true'
+    else:
+        # Clear debug-specific vars to prevent interference
+        if 'FREEROUTER_LOG_RAW' in os.environ:
+            logger.info("Note: Clearing FREEROUTER_LOG_RAW for normal mode")
+            del os.environ['FREEROUTER_LOG_RAW']
+
+
 def cmd_fetch(args):
     """Fetch models and generate config"""
     config_mgr = ConfigManager()
@@ -103,10 +127,45 @@ def cmd_start(args):
     import subprocess
     import time
 
+    # Setup debug mode
+    debug_mode = hasattr(args, 'debug') and args.debug
+    _setup_debug_env(debug_mode)
+
+    if debug_mode:
+        logger.info("=" * 60)
+        logger.info("🐛 Debug mode enabled")
+        logger.info("  - Will regenerate config with debug settings")
+        logger.info("  - Raw HTTP requests/responses will be logged")
+        logger.info("  - Check logs with: freerouter logs")
+        logger.info("=" * 60)
+
     config_mgr = ConfigManager()
 
     # Find config
     output_config = config_mgr.get_output_config_path()
+
+    # If debug mode or config doesn't exist, regenerate
+    if debug_mode or not output_config.exists():
+        if debug_mode:
+            logger.info("Regenerating config with debug settings...")
+
+        # Find provider config
+        provider_config = config_mgr.find_provider_config()
+        if not provider_config:
+            logger.error("No providers.yaml found!")
+            logger.info("Run 'freerouter init' to create configuration")
+            sys.exit(1)
+
+        # Regenerate config
+        fetcher = FreeRouterFetcher(config_path=str(output_config))
+        fetcher.load_providers_from_yaml(str(provider_config))
+        if not fetcher.generate_config():
+            logger.error("Failed to generate config")
+            sys.exit(1)
+
+        if debug_mode:
+            logger.info("✓ Config regenerated with debug settings")
+
     if not output_config.exists():
         logger.error(f"Config not found: {output_config}")
         logger.info("Run 'freerouter fetch' first to generate config")
@@ -158,8 +217,21 @@ def cmd_start(args):
             "--host", host
         ]
 
+        # Add debug flag if debug mode enabled
+        if debug_mode:
+            cmd.extend(["--detailed_debug"])
+
         # Open log file
         log_handle = open(log_file, "a")
+
+        # Prepare environment for subprocess
+        env = os.environ.copy()
+
+        # Set HTTPX logging if in debug mode
+        if env.get('LITELLM_LOG') == 'DEBUG':
+            env['HTTPX_LOG_LEVEL'] = 'DEBUG'
+
+        logger.info(f"LITELLM_LOG level: {env.get('LITELLM_LOG', 'INFO')}")
 
         # Start process as daemon (detached from parent)
         process = subprocess.Popen(
@@ -167,7 +239,8 @@ def cmd_start(args):
             stdout=log_handle,
             stderr=subprocess.STDOUT,
             start_new_session=True,  # Detach from parent process
-            bufsize=1
+            bufsize=1,
+            env=env  # Pass environment variables to subprocess
         )
 
         # Write PID file
@@ -243,6 +316,7 @@ def cmd_list(args):
     """List available models"""
     import os
     import yaml
+    import requests
     from rich.console import Console
     from rich.table import Table
     from rich.panel import Panel
@@ -257,38 +331,81 @@ def cmd_list(args):
         logger.info("Run 'freerouter fetch' first to generate config")
         sys.exit(1)
 
-    # Show service status banner
+    port = os.getenv("LITELLM_PORT", "4000")
+    host = os.getenv("LITELLM_HOST", "0.0.0.0")
+    url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
+
+    # Show service status banner and try to get models from API if running
+    models = None
+    providers_models = None
+
     if is_service_running():
         log_dir = output_config.parent
         pid_file = log_dir / "freerouter.pid"
         with open(pid_file) as f:
             pid = f.read().strip()
 
-        port = os.getenv("LITELLM_PORT", "4000")
-        host = os.getenv("LITELLM_HOST", "0.0.0.0")
-        url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
-
         console.print(f"\n[green]● Service Running[/green] [dim](PID: {pid}, {url})[/dim]")
+
+        # Try to get models from API
+        try:
+            response = requests.get(f"{url}/v1/models", timeout=2)
+            if response.status_code == 200:
+                api_data = response.json()
+                api_models = api_data.get("data", [])
+                if api_models:
+                    # Read config to get provider mapping
+                    with open(output_config) as f:
+                        config = yaml.safe_load(f)
+                    config_models = config.get("model_list", [])
+
+                    # Build model_name -> provider mapping from config
+                    model_provider_map = {}
+                    for config_model in config_models:
+                        model_name = config_model.get("model_name", "")
+                        litellm_model = config_model.get("litellm_params", {}).get("model", "")
+                        provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
+                        model_provider_map[model_name] = provider
+
+                    # Convert API response to our format with provider info
+                    models = []
+                    providers_models = defaultdict(list)
+                    for model in api_models:
+                        model_id = model.get("id", "")
+                        models.append({"model_name": model_id})
+                        # Use provider from config, fallback to inferring from name
+                        provider = model_provider_map.get(model_id, "unknown")
+                        if provider == "unknown" and "/" in model_id:
+                            provider = model_id.split("/")[0]
+                        providers_models[provider].append(model_id)
+                    console.print(f"[dim]  Fetched from API: /v1/models[/dim]")
+        except Exception as e:
+            logger.debug(f"Failed to fetch from API: {e}")
+            # Fall back to config file
+            pass
     else:
         console.print(f"\n[yellow]○ Service Not Running[/yellow] [dim](start with: freerouter start)[/dim]")
 
-    with open(output_config) as f:
-        config = yaml.safe_load(f)
+    # Fall back to reading from config file if API call failed or service not running
+    if models is None:
+        with open(output_config) as f:
+            config = yaml.safe_load(f)
 
-    models = config.get("model_list", [])
+        models = config.get("model_list", [])
 
     if not models:
         console.print("[yellow]No models configured.[/yellow]")
         return
 
-    # Group models by provider
-    providers_models = defaultdict(list)
+    # Group models by provider (if not already done by API fetch)
+    if providers_models is None:
+        providers_models = defaultdict(list)
 
-    for model in models:
-        model_name = model.get("model_name", "")
-        litellm_model = model.get("litellm_params", {}).get("model", "")
-        provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
-        providers_models[provider].append(model_name)
+        for model in models:
+            model_name = model.get("model_name", "")
+            litellm_model = model.get("litellm_params", {}).get("model", "")
+            provider = litellm_model.split("/")[0] if "/" in litellm_model else "unknown"
+            providers_models[provider].append(model_name)
 
     # Display each provider in a separate table
     for provider in sorted(providers_models.keys()):
@@ -390,10 +507,80 @@ def cmd_stop(args):
         sys.exit(1)
 
 
+def _format_log_line(line: str) -> str:
+    """Format log line for pretty output"""
+    import re
+    import json
+
+    # Format "POST Request Sent from LiteLLM"
+    if "POST Request Sent from LiteLLM:" in line:
+        return "\n\033[96m" + "="*70 + "\033[0m\n\033[1;96m🚀 API REQUEST\033[0m\n" + "\033[96m" + "="*70 + "\033[0m\n" + line
+
+    # Format curl command lines
+    if line.strip().startswith("curl -X POST"):
+        return "\033[93m" + line + "\033[0m"
+
+    # Format RAW RESPONSE
+    if "RAW RESPONSE:" in line:
+        # Try to extract and format JSON
+        try:
+            json_match = re.search(r'RAW RESPONSE:\s*(\{.*\})', line, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+                data = json.loads(json_str)
+
+                output = [
+                    "\n\033[92m" + "="*70 + "\033[0m",
+                    "\033[1;92m📥 API RESPONSE\033[0m",
+                    "\033[92m" + "="*70 + "\033[0m"
+                ]
+
+                # Model and ID
+                if 'model' in data:
+                    output.append(f"\033[1mModel:\033[0m {data['model']}")
+                if 'id' in data:
+                    output.append(f"\033[1mID:\033[0m {data['id']}")
+
+                # Content
+                if 'choices' in data and len(data['choices']) > 0:
+                    choice = data['choices'][0]
+                    if 'message' in choice:
+                        content = choice['message'].get('content', '')
+                        output.append(f"\n\033[1mContent:\033[0m\n{content}")
+
+                # Usage
+                if 'usage' in data:
+                    usage = data['usage']
+                    output.append(f"\n\033[1mToken Usage:\033[0m")
+                    output.append(f"  Prompt: {usage.get('prompt_tokens', 0)}, Completion: {usage.get('completion_tokens', 0)}, Total: {usage.get('total_tokens', 0)}")
+
+                output.append("\033[92m" + "="*70 + "\033[0m\n")
+                return "\n".join(output)
+        except:
+            pass
+
+        return "\n\033[92m" + "="*70 + "\033[0m\n\033[1;92m📥 API RESPONSE\033[0m\n" + "\033[92m" + "="*70 + "\033[0m\n" + line
+
+    # Highlight errors
+    if "ERROR" in line or "error" in line.lower():
+        return "\033[91m" + line + "\033[0m"
+
+    # Highlight warnings
+    if "WARNING" in line or "warning" in line.lower():
+        return "\033[93m" + line + "\033[0m"
+
+    # Highlight INFO level for Router
+    if "LiteLLM Router:INFO" in line and "200 OK" in line:
+        return "\033[92m" + line + "\033[0m"
+
+    return line
+
+
 def cmd_logs(args):
-    """Show service logs in real-time"""
+    """Show service logs in real-time with pretty formatting"""
     import os
     import time
+    from .request_log_parser import LogStreamFilter
 
     config_mgr = ConfigManager()
     output_config = config_mgr.get_output_config_path()
@@ -423,21 +610,42 @@ def cmd_logs(args):
         logger.error(f"Log file not found: {log_file}")
         sys.exit(1)
 
-    logger.info(f"Showing logs from: {log_file}")
-    logger.info(f"Service PID: {pid}")
-    logger.info("Press Ctrl+C to exit\n")
-    logger.info("=" * 60)
+    requests_only = hasattr(args, 'requests') and args.requests
 
-    # Tail the log file
+    if requests_only:
+        logger.info(f"Showing API requests/responses from: {log_file}")
+        logger.info("Press Ctrl+C to exit\n")
+    else:
+        logger.info(f"Showing logs from: {log_file}")
+        logger.info(f"Service PID: {pid}")
+        logger.info("Press Ctrl+C to exit\n")
+        logger.info("=" * 60)
+
+    # Tail the log file with formatting
     try:
         with open(log_file, "r") as f:
             # Go to end of file
             f.seek(0, 2)
 
+            # Initialize filter for requests-only mode
+            log_filter = LogStreamFilter() if requests_only else None
+            buffer = ""  # Buffer for normal mode
+
             while True:
                 line = f.readline()
                 if line:
-                    print(line, end="")
+                    if requests_only:
+                        # Use LogStreamFilter for request/response filtering
+                        output = log_filter.process_line(line)
+                        if output:
+                            print(output)
+                    else:
+                        # Normal mode: format all logs
+                        buffer += line
+                        if line.endswith('\n'):
+                            formatted = _format_log_line(buffer)
+                            print(formatted, end="")
+                            buffer = ""
                 else:
                     time.sleep(0.1)
 
@@ -646,21 +854,29 @@ def cmd_reload(args):
     """
     Reload FreeRouter service
 
-    Two modes:
-    - Normal: stop + start (restart service with existing config)
-    - Refresh (-r): fetch + stop + start (refresh config from providers)
+    Modes:
+    - Normal: stop + start (restart with existing config)
+    - Refresh (-r): fetch + stop + start (refresh from providers)
+    - Debug (-d): restart with debug logging
     """
     import time
+    import os
+
+    # Setup debug mode
+    debug_mode = hasattr(args, 'debug') and args.debug
+    _setup_debug_env(debug_mode)
 
     config_mgr = ConfigManager()
     output_config = config_mgr.get_output_config_path()
 
     logger.info("=" * 60)
     logger.info("Reloading FreeRouter Service")
+    if debug_mode:
+        logger.info("🐛 Debug mode: ON")
     logger.info("=" * 60)
 
-    # 1. If --refresh, backup and regenerate config
-    if args.refresh:
+    # 1. If --refresh or --debug, backup and regenerate config
+    if args.refresh or debug_mode:
         logger.info("Refreshing configuration from providers...")
 
         # Backup existing config
@@ -884,6 +1100,11 @@ def main():
 
     # start command
     parser_start = subparsers.add_parser("start", help="Start FreeRouter service")
+    parser_start.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        help="Enable debug mode (shows raw HTTP requests/responses)"
+    )
     parser_start.set_defaults(func=cmd_start)
 
     # list command
@@ -896,6 +1117,11 @@ def main():
 
     # logs command
     parser_logs = subparsers.add_parser("logs", help="Show service logs")
+    parser_logs.add_argument(
+        "-r", "--requests",
+        action="store_true",
+        help="Show only API requests and responses (filters out debug logs)"
+    )
     parser_logs.set_defaults(func=cmd_logs)
 
     # status command
@@ -911,6 +1137,11 @@ def main():
         "-r", "--refresh",
         action="store_true",
         help="Refresh configuration from providers before reloading"
+    )
+    parser_reload.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        help="Enable debug mode (shows raw HTTP requests/responses)"
     )
     parser_reload.set_defaults(func=cmd_reload)
 
