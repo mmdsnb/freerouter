@@ -47,7 +47,9 @@
       "Bash(git tag:*)",
       "Bash(uv pip install:*)",
       "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh release:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(rm:*)"
     ]
   }
 }
