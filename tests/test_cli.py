@@ -37,7 +37,7 @@ class TestCLI:
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         assert 'FreeRouter' in captured.out
-        assert '0.1.2' in captured.out
+        assert '0.1.3' in captured.out
 
     def test_help(self, capsys):
         """Test --help flag"""

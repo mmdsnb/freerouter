@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-12-28
+
+### Added
+- **Request Filtering**: New `--requests` / `-r` flag for `freerouter logs` command to filter and show only API requests/responses
+- **Request Log Parser**: New `request_log_parser.py` module with `LogStreamFilter` class for parsing LiteLLM debug logs
+- **Pretty Request Formatting**: Colored output with structured display of requests (headers, body) and responses (model, content, tokens)
+- **Debug Mode**: New `--debug` flag for `start` and `reload` commands to enable detailed HTTP request/response logging
+- **Documentation**: Added logging guide, debug requests documentation, and view API requests guide
+- **Log Rotation**: Added example log rotation scripts and logrotate configuration
+
+### Fixed
+- `/v1/models` endpoint returning empty list when `LITELLM_MASTER_KEY` is set
+- Incomplete URL in logs (now properly appends `/chat/completions` to `/v1/` URLs)
+- Environment variable interference in debug mode
+- Missing `os` module import in CLI
+
+### Changed
+- Removed hardcoded master key checking logic
+- Removed `router_settings` and `general_settings` from generated config (causes `/v1/models` issues)
+- Enhanced `list` command to use API endpoint instead of config file
+- Improved environment variable handling for cleaner debug mode
+
+### Testing
+- Added 32 unit tests for request log parser (100% coverage on new module)
+- Added comprehensive tests for `/v1/models` endpoint bug fix
+- Total: 134 tests passing
+- Coverage: 80% (+3% from v0.1.2)
+
 ## [0.1.2] - 2025-12-26
 
 ### Added
