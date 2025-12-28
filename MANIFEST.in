@@ -1,8 +1,6 @@
 include README.md
 include README_ZH.md
 include LICENSE
-include requirements.txt
-include requirements-dev.txt
 recursive-include freerouter *.py
 recursive-include examples *.yaml *.example
 recursive-exclude tests *

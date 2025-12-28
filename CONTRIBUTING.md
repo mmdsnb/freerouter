@@ -13,12 +13,8 @@ cd freerouter
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Install in editable mode
-pip install -e .
+# Install dependencies and dev dependencies
+pip install -e ".[dev]"
 ```
 
 ## 添加新 Provider
