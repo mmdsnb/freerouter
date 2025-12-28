@@ -21,6 +21,11 @@ config/freerouter.pid
 config/freerouter.log
 config/config.yaml.backup.*
 
+# Master key files (contains authentication secrets)
+.master_key
+config/.master_key
+**/.master_key
+
 # IDE
 .vscode/
 .idea/
