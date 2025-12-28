@@ -112,9 +112,33 @@ def cmd_fetch(args):
     fetcher.load_providers_from_yaml(str(provider_config))
 
     if fetcher.generate_config():
+        # Read master_key to display
+        master_key = None
+        master_key_file = output_config.parent / ".master_key"
+
+        # Try config first
+        try:
+            import yaml
+            with open(output_config) as f:
+                config = yaml.safe_load(f)
+                master_key = config.get("litellm_settings", {}).get("master_key")
+        except Exception:
+            pass
+
+        # Fallback to file
+        if not master_key and master_key_file.exists():
+            try:
+                with open(master_key_file) as f:
+                    master_key = f.read().strip()
+            except Exception:
+                pass
+
         logger.info("=" * 60)
         logger.info("✓ Config generation successful!")
         logger.info(f"Generated: {output_config}")
+        if master_key:
+            logger.info(f"Master Key: {master_key}")
+            logger.info("📝 Save this key! Required for API access")
         logger.info("=" * 60)
     else:
         logger.error("✗ Config generation failed!")
@@ -287,11 +311,35 @@ def cmd_start(args):
                 continue
 
         if startup_success:
+            # Read master_key from config or .master_key file
+            master_key = None
+            master_key_file = output_config.parent / ".master_key"
+
+            # Try to read from config first
+            try:
+                import yaml
+                with open(output_config) as f:
+                    config = yaml.safe_load(f)
+                    master_key = config.get("litellm_settings", {}).get("master_key")
+            except Exception:
+                pass
+
+            # Fallback to .master_key file
+            if not master_key and master_key_file.exists():
+                try:
+                    with open(master_key_file) as f:
+                        master_key = f.read().strip()
+                except Exception:
+                    pass
+
             logger.info("\n" + "=" * 60)
             logger.info("✓ FreeRouter started successfully!")
             logger.info(f"  PID: {process.pid}")
             logger.info(f"  URL: http://{host}:{port}")
             logger.info(f"  Logs: {log_file}")
+            if master_key:
+                logger.info(f"  Master Key: {master_key}")
+                logger.info(f"  📝 Save this key! Required for API access")
             logger.info("")
             logger.info("Commands:")
             logger.info("  freerouter logs      - View real-time logs")
