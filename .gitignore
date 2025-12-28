@@ -49,3 +49,5 @@ htmlcov/
 conversations/*.txt
 conversations/*.md.txt
 !conversations/README.md
+
+*.whl

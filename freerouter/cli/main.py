@@ -708,7 +708,8 @@ def cmd_status(args):
     # Check if service is running
     if not pid_file.exists():
         console.print(Panel.fit(
-            "[yellow]○ Not Running[/yellow]\n\n"
+            f"[yellow]○ Not Running[/yellow]\n"
+            f"Version: [dim]{__version__}[/dim]\n\n"
             "Start service with: [cyan]freerouter start[/cyan]",
             title="[bold]FreeRouter Service Status[/bold]",
             border_style="yellow"
@@ -728,13 +729,17 @@ def cmd_status(args):
         table.add_column("Value", style="white")
 
         table.add_row("Status", "[green]● Running[/green]")
+        table.add_row("Version", __version__)
         table.add_row("PID", str(pid))
 
         # Get service URL
         port = os.getenv("LITELLM_PORT", "4000")
         host = os.getenv("LITELLM_HOST", "0.0.0.0")
-        url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
-        table.add_row("URL", f"[link={url}]{url}[/link]")
+        if host == "0.0.0.0":
+            display_url = f"http://localhost:{port} [dim](listening on 0.0.0.0)[/dim]"
+        else:
+            display_url = f"http://{host}:{port}"
+        table.add_row("URL", display_url)
 
         # Config file
         table.add_row("Config", str(output_config))
@@ -774,6 +779,7 @@ def cmd_status(args):
         # Process not running, but PID file exists (stale)
         console.print(Panel.fit(
             f"[yellow]○ Not Running[/yellow] [dim](stale PID file)[/dim]\n"
+            f"Version: [dim]{__version__}[/dim]\n"
             f"PID: [dim]{pid} (not found)[/dim]\n\n"
             "Clean up and start: [cyan]freerouter start[/cyan]",
             title="[bold]FreeRouter Service Status[/bold]",
