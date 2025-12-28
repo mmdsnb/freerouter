@@ -52,7 +52,23 @@
       "Bash(rm:*)",
       "Bash(git stash:*)",
       "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh run:*)",
-      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 curl:*)"
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 curl:*)",
+      "Bash(docker-compose config:*)",
+      "Bash(git checkout:*)",
+      "Bash(git restore:*)",
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh workflow:*)",
+      "Bash(python -m freerouter.cli.main fetch:*)",
+      "Bash(python -m freerouter.cli.main:*)",
+      "Bash(python -m freerouter.cli.main start:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(docker pull:*)",
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 docker pull:*)",
+      "Bash(systemctl status:*)",
+      "Bash(ALL_PROXY=http://localhost:7890 docker pull:*)",
+      "Bash(pip show:*)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 pip download:*)",
+      "Bash(find:*)"
     ]
   }
 }
