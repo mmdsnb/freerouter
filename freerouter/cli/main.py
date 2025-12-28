@@ -112,11 +112,8 @@ def cmd_fetch(args):
     fetcher.load_providers_from_yaml(str(provider_config))
 
     if fetcher.generate_config():
-        # Read master_key to display
+        # Read master_key from config
         master_key = None
-        master_key_file = output_config.parent / ".master_key"
-
-        # Try config first
         try:
             import yaml
             with open(output_config) as f:
@@ -124,14 +121,6 @@ def cmd_fetch(args):
                 master_key = config.get("litellm_settings", {}).get("master_key")
         except Exception:
             pass
-
-        # Fallback to file
-        if not master_key and master_key_file.exists():
-            try:
-                with open(master_key_file) as f:
-                    master_key = f.read().strip()
-            except Exception:
-                pass
 
         logger.info("=" * 60)
         logger.info("✓ Config generation successful!")
@@ -311,11 +300,8 @@ def cmd_start(args):
                 continue
 
         if startup_success:
-            # Read master_key from config or .master_key file
+            # Read master_key from config
             master_key = None
-            master_key_file = output_config.parent / ".master_key"
-
-            # Try to read from config first
             try:
                 import yaml
                 with open(output_config) as f:
@@ -323,14 +309,6 @@ def cmd_start(args):
                     master_key = config.get("litellm_settings", {}).get("master_key")
             except Exception:
                 pass
-
-            # Fallback to .master_key file
-            if not master_key and master_key_file.exists():
-                try:
-                    with open(master_key_file) as f:
-                        master_key = f.read().strip()
-                except Exception:
-                    pass
 
             logger.info("\n" + "=" * 60)
             logger.info("✓ FreeRouter started successfully!")
@@ -769,7 +747,6 @@ def cmd_status(args):
             table.add_row("Uptime", uptime_str)
 
         # Count models and get master_key
-        master_key = None
         if output_config.exists():
             import yaml
             with open(output_config) as f:
@@ -779,19 +756,8 @@ def cmd_status(args):
 
             # Get master_key from config
             master_key = config.get("litellm_settings", {}).get("master_key")
-
-        # Fallback to .master_key file
-        master_key_file = output_config.parent / ".master_key"
-        if not master_key and master_key_file.exists():
-            try:
-                with open(master_key_file) as f:
-                    master_key = f.read().strip()
-            except Exception:
-                pass
-
-        # Display master_key
-        if master_key:
-            table.add_row("Master Key", f"[yellow]{master_key}[/yellow]")
+            if master_key:
+                table.add_row("Master Key", f"[yellow]{master_key}[/yellow]")
 
         # Log file
         if log_file.exists():

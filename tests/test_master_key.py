@@ -14,8 +14,8 @@ from freerouter.core.fetcher import FreeRouterFetcher
 class TestMasterKeyGeneration:
     """Test master_key generation and management"""
 
-    def test_env_master_key_priority(self, tmp_path):
-        """Test that LITELLM_MASTER_KEY env var has highest priority"""
+    def test_env_master_key_used(self, tmp_path):
+        """Test that LITELLM_MASTER_KEY env var is used when set"""
         config_path = tmp_path / "config.yaml"
         env_key = "sk-env-test-key-12345"
 
@@ -28,16 +28,12 @@ class TestMasterKeyGeneration:
 
             assert key == env_key, "Should use LITELLM_MASTER_KEY from environment"
 
-            # Verify .master_key file was NOT created
-            master_key_file = tmp_path / ".master_key"
-            assert not master_key_file.exists(), "Should not create .master_key file when env var is set"
-
         finally:
             # Cleanup
             del os.environ["LITELLM_MASTER_KEY"]
 
     def test_auto_generated_master_key(self, tmp_path):
-        """Test auto-generation of master_key when not provided"""
+        """Test auto-generation of ephemeral master_key when not provided"""
         config_path = tmp_path / "config.yaml"
 
         # Ensure no env var is set
@@ -51,37 +47,21 @@ class TestMasterKeyGeneration:
         assert key.startswith("sk-"), "Generated key should start with 'sk-'"
         assert len(key) > 40, "Generated key should be long enough"
 
-        # Verify .master_key file was created
-        master_key_file = tmp_path / ".master_key"
-        assert master_key_file.exists(), ".master_key file should be created"
-
-        # Verify file content matches
-        with open(master_key_file) as f:
-            file_key = f.read().strip()
-        assert file_key == key, "File content should match generated key"
-
-        # Verify file permissions (owner read/write only)
-        stat_info = master_key_file.stat()
-        assert oct(stat_info.st_mode)[-3:] == "600", "File should have 0600 permissions"
-
-    def test_existing_master_key_file(self, tmp_path):
-        """Test that existing .master_key file is reused"""
+    def test_ephemeral_keys_are_different(self, tmp_path):
+        """Test that each generation creates a different ephemeral key"""
         config_path = tmp_path / "config.yaml"
-        master_key_file = tmp_path / ".master_key"
-        existing_key = "sk-existing-test-key-67890"
-
-        # Create existing .master_key file
-        with open(master_key_file, 'w') as f:
-            f.write(existing_key)
 
         # Ensure no env var
         if "LITELLM_MASTER_KEY" in os.environ:
             del os.environ["LITELLM_MASTER_KEY"]
 
-        fetcher = FreeRouterFetcher(config_path=str(config_path))
-        key = fetcher.get_or_create_master_key()
+        fetcher1 = FreeRouterFetcher(config_path=str(config_path))
+        key1 = fetcher1.get_or_create_master_key()
 
-        assert key == existing_key, "Should reuse existing .master_key file"
+        fetcher2 = FreeRouterFetcher(config_path=str(config_path))
+        key2 = fetcher2.get_or_create_master_key()
+
+        assert key1 != key2, "Ephemeral keys should be different on each generation"
 
     def test_master_key_in_config(self, tmp_path):
         """Test that master_key is included in generated config"""

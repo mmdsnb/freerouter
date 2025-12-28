@@ -37,7 +37,6 @@ class FreeRouterFetcher:
         """
         self.config_path = config_path
         self.providers: List[BaseProvider] = []
-        self.master_key_file = Path(config_path).parent / ".master_key"
 
     def add_provider(self, provider: BaseProvider):
         """
@@ -117,38 +116,21 @@ class FreeRouterFetcher:
 
         Priority:
         1. LITELLM_MASTER_KEY environment variable
-        2. Existing .master_key file
-        3. Generate new random key and save to .master_key
+        2. Generate new random key (ephemeral, not saved)
 
         Returns:
             str: The master key
         """
-        # Check environment variable first
+        # Check environment variable
         env_key = os.getenv("LITELLM_MASTER_KEY")
         if env_key:
             logger.info("Using LITELLM_MASTER_KEY from environment")
             return env_key
 
-        # Check if key file exists
-        if self.master_key_file.exists():
-            with open(self.master_key_file, 'r') as f:
-                key = f.read().strip()
-                if key:
-                    logger.info(f"Using existing master_key from {self.master_key_file}")
-                    return key
-
-        # Generate new key
+        # Generate new ephemeral key
         new_key = f"sk-{secrets.token_urlsafe(32)}"
-
-        # Save to file
-        os.makedirs(self.master_key_file.parent, exist_ok=True)
-        with open(self.master_key_file, 'w') as f:
-            f.write(new_key)
-
-        # Set restrictive permissions (owner read/write only)
-        os.chmod(self.master_key_file, 0o600)
-
-        logger.info(f"Generated new master_key and saved to {self.master_key_file}")
+        logger.info("Generated new ephemeral master_key (not saved to file)")
+        logger.info("💡 Tip: Set LITELLM_MASTER_KEY env var to use a persistent key")
         return new_key
 
     def generate_config(self):
