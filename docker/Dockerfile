@@ -12,7 +12,7 @@ COPY freerouter/ ./freerouter/
 RUN pip install --no-cache-dir .
 
 # Copy docker entrypoint
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY docker/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose litellm default port
