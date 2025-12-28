@@ -49,7 +49,10 @@
       "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh release:*)",
       "Bash(echo:*)",
       "Bash(git ls-tree:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git stash:*)",
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 gh run:*)",
+      "Bash(http_proxy=http://localhost:7890 https_proxy=http://localhost:7890 curl:*)"
     ]
   }
 }

@@ -211,7 +211,7 @@ freerouter reload
 ```bash
 # 使用 logrotate（Linux）
 sudo tee /etc/logrotate.d/freerouter << EOF
-/home/$USER/.config/freerouter/freerouter.log {
+~/.config/freerouter/freerouter.log {
     daily
     rotate 7
     compress

@@ -2,18 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy pyproject.toml and install dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+# Copy package files
+COPY pyproject.toml README.md ./
 
 # Copy application code
-COPY freellm/ ./freellm/
-COPY scripts/ ./scripts/
-COPY config/ ./config/
-COPY examples/ ./examples/
+COPY freerouter/ ./freerouter/
+
+# Install the package
+RUN pip install --no-cache-dir .
 
 # Expose litellm default port
 EXPOSE 4000
 
-# Default command
-CMD ["python", "scripts/start.py"]
+# Default command - use the installed CLI
+CMD ["freerouter", "start"]
