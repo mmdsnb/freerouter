@@ -19,5 +19,8 @@ echo "Starting FreeRouter..."
 # Start freerouter in background
 freerouter start
 
+# Wait for service to be ready
+sleep 3
+
 # Follow logs in foreground (keeps container running)
 exec freerouter logs --requests
