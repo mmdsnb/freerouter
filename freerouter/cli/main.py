@@ -768,13 +768,30 @@ def cmd_status(args):
             uptime_str = format_uptime(uptime_seconds)
             table.add_row("Uptime", uptime_str)
 
-        # Count models
+        # Count models and get master_key
+        master_key = None
         if output_config.exists():
             import yaml
             with open(output_config) as f:
                 config = yaml.safe_load(f)
             model_count = len(config.get("model_list", []))
             table.add_row("Models", f"{model_count} configured")
+
+            # Get master_key from config
+            master_key = config.get("litellm_settings", {}).get("master_key")
+
+        # Fallback to .master_key file
+        master_key_file = output_config.parent / ".master_key"
+        if not master_key and master_key_file.exists():
+            try:
+                with open(master_key_file) as f:
+                    master_key = f.read().strip()
+            except Exception:
+                pass
+
+        # Display master_key
+        if master_key:
+            table.add_row("Master Key", f"[yellow]{master_key}[/yellow]")
 
         # Log file
         if log_file.exists():
