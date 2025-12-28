@@ -11,8 +11,12 @@ COPY freerouter/ ./freerouter/
 # Install the package
 RUN pip install --no-cache-dir .
 
+# Copy docker entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose litellm default port
 EXPOSE 4000
 
-# Default command - use the installed CLI
-CMD ["freerouter", "start"]
+# Use entrypoint script that runs litellm in foreground
+ENTRYPOINT ["docker-entrypoint.sh"]
