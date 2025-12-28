@@ -23,7 +23,13 @@
 - **Auto-commit**: Create commits when completing meaningful work
   - Format: `<type>(<scope>): <subject>`
   - Types: feat, fix, docs, refactor, test, chore
-- **Never auto-push**: Only push when user explicitly requests
+  - Commit frequently to keep history clean
+- **Push policy**: ONLY push when user explicitly requests
+  - Do NOT push automatically after commits
+  - Wait for user's "push" or "提交并push" command
+- **Release policy**: Accumulate multiple improvements before releasing
+  - Do NOT release for single small fixes
+  - Only release when user explicitly requests or when there are significant changes
 - **Code quality**: Continuously refactor to prevent technical debt
 
 ### Pre-Commit Checklist
